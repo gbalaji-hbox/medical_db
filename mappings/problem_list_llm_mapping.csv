@@ -1,0 +1,108 @@
+token,suggested_cause,icd_code,confidence,notes
+"S",,,low,
+"Essential hypertension","Hypertension or Pre Hypertensive",I10,high,exact phrase
+"Primary hypertension","Hypertension or Pre Hypertensive",I10,high,exact phrase
+"ASHD (arteriosclerotic heart disease)","Coronary Artery Disease",I25,high,ASHD -> CAD
+"Cardiac and Vasculature: Essential hypertension","Hypertension or Pre Hypertensive",I10,high,
+"without long-term current use of insulin",,,low,non-diagnostic
+"Hypertension","Hypertension or Pre Hypertensive",I10,high,
+"Pure hypercholesterolemia","Hyperlipidemia",E78.5,high,exact phrase
+"Paroxysmal atrial fibrillation","Arrhythmia",I49,high,PAF maps to arrhythmia
+"Cardiac and Vasculature: Primary hypertension","Hypertension or Pre Hypertensive",I10,high,
+"Cardiac and Vasculature: ASHD (arteriosclerotic heart disease)","Coronary Artery Disease",I25,high,
+"bilateral",,,low,anatomic qualifier
+"right",,,low,anatomic qualifier
+"left",,,low,anatomic qualifier
+"P PTCA (percutaneous transluminal coronary angioplasty)","Coronary Artery Disease",I25,medium,procedure indicates CAD
+"Mental Health: Anxiety",,,low,not in disease causelist
+"Palpitations","Arrhythmia",I49,medium,symptom suggesting arrhythmia
+"adult",,,low,non-diagnostic
+"Cardiac and Vasculature: Hypertension","Hypertension or Pre Hypertensive",I10,high,
+"Ischemic cardiomyopathy","Coronary Artery Disease",I25,medium,ischemic cardiomyopathy often due to CAD
+"Chest pain","Coronary Artery Disease",I25,low,symptom (mapped cautiously)
+"History of coronary angioplasty with insertion of stent","Coronary Artery Disease",I25,high,history of PCI implies CAD
+"Atrial fibrillation","Arrhythmia",I49,high,
+"NSTEMI (non-ST elevated myocardial infarction)","Coronary Artery Disease",I25,high,NSTEMI indicates ischemic heart disease
+"PAF (paroxysmal atrial fibrillation)","Arrhythmia",I49,high,
+"Vitamin D deficiency",,,low,not in causelist
+"Hypercholesteremia","Hyperlipidemia",E78.5,high,variant spelling
+"Dyslipidemia","Hyperlipidemia",E78.5,high,
+"Sleep: OSA on CPAP","Sleep Apnea",G47.3,high,OSA matches Sleep Apnea
+"PAD (peripheral artery disease) (CMS-hcc)","Peripheral Vascular Disease",I73,high,
+"P CABG (coronary artery bypass graft)","Coronary Artery Disease",I25,high,history of CABG implies CAD
+"Bradycardia","Arrhythmia",I49,medium,
+"LBBB (left bundle branch block)","Arrhythmia",I49,medium,conduction abnormality (map to arrhythmia)
+"Prediabetes",,,low,not in causelist
+"Sinus bradycardia","Arrhythmia",I49,medium,
+"Persistent atrial fibrillation","Arrhythmia",I49,high,
+"Venous insufficiency",,,low,not in causelist
+"Symptoms and Signs: Syncope",,,low,symptom
+"Bilateral carotid artery stenosis","Cerebrovascular Accident",I63,medium,carotid disease linked to stroke risk
+"Hematology and Neoplasia: Anemia",,,low,not in causelist
+"unspecified",,,low,non-diagnostic
+"Symptoms and Signs: Dizziness",,,low,symptom
+"Musculoskeletal and Injuries: Arthritis",,,low,not in causelist
+"Cardiomyopathy","Chronic heart failure",I50,medium,cardiomyopathy often maps to heart failure
+"Other chest pain","Coronary Artery Disease",I25,low,symptom
+"PVC (premature ventricular contraction)","Arrhythmia",I49,high,
+"AKI (acute kidney injury)",,,low,not in causelist
+"PVC's (premature ventricular contractions)","Arrhythmia",I49,high,
+"Pulmonary and Pneumonias: Shortness of breath","Dyspnea",R06.09,medium,symptom; underlying causes should be CAD/COPD etc.
+"Carotid stenosis","Cerebrovascular Accident",I63,medium,
+"On statin therapy","Hyperlipidemia",E78.5,low,inferred from treatment
+"Allergies and Adverse Reactions: Statin intolerance",,,low,not in causelist
+"Symptoms and Signs: Fatigue",,,low,symptom
+"Cardiac and Vasculature: Paroxysmal atrial fibrillation","Arrhythmia",I49,high,
+"Hypothyroidism",,,low,not in causelist
+"Nonischemic cardiomyopathy","Chronic heart failure",I50,medium,
+"Cardiac and Vasculature: Palpitations","Arrhythmia",I49,medium,
+"HFrEF (heart failure with reduced ejection fraction)","Congestive Heart Failure",I50,high,
+"Prediabetes",,,low,duplicate
+"Coag and Thromboembolic: Thrombocytopenia",,,low,not in causelist
+"Ischemic heart disease","Coronary Artery Disease",I25,high,
+"Chronic systolic heart failure","Congestive Heart Failure",I50,high,
+"Hx of CABG","Coronary Artery Disease",I25,high,
+"Endocrine and Metabolic: Diabetes mellitus","Type 2 Diabetes",E11.2,high,
+"RBBB","Arrhythmia",I49,medium,conduction abnormality
+"HTN (hypertension)","Hypertension or Pre Hypertensive",I10,high,
+"ICD (implantable cardioverter-defibrillator) in place","Arrhythmia",I49,medium,device for arrhythmia
+"Hypercholesterolemia","Hyperlipidemia",E78.5,high,
+"Coronary atherosclerosis","Coronary Artery Disease",I25,high,
+"Pulmonary and Pneumonias: SOB (shortness of breath)","Dyspnea",R06.09,medium,
+"Aortic stenosis","Valvular Heart Disease",I35,medium,
+"Abnormal electrocardiogram","Arrhythmia",I49,low,indicator of possible arrhythmia
+"Elevated troponin","Coronary Artery Disease",I25,medium,marker of myocardial injury
+"AV block","Arrhythmia",I49,medium,
+"Sleep: Insomnia",,,low,not in causelist
+"SVT (supraventricular tachycardia) (HHS-HCC)","Arrhythmia",I49,high,
+"Anemia",,,low,not in causelist
+"Symptoms and Signs: Near syncope",,,low,symptom
+"Precordial pain","Coronary Artery Disease",I25,low,symptom
+"Bifascicular block","Arrhythmia",I49,medium,
+"Diabetes mellitus","Type 2 Diabetes",E11.2,high,
+"Arteriosclerotic heart disease (ASHD)","Coronary Artery Disease",I25,high,
+"Shortness of breath","Dyspnea",R06.09,medium,symptom
+"Pulmonary and Pneumonias: Chronic obstructive pulmonary disease","COPD",J44.9,high,
+"Ischemic cardiomyopathy","Coronary Artery Disease",I25,medium,duplicate
+"Coronary artery calcification","Coronary Artery Disease",I25,medium,
+"Atrial flutter","Arrhythmia",I49,medium,
+"Hypertensive heart disease","Hypertension or Pre Hypertensive",I10,medium,
+"PVC (premature ventricular contraction)","Arrhythmia",I49,high,duplicate
+"Chronic diastolic heart failure","Congestive Heart Failure",I50,high,
+"Hypertensive heart disease without heart failure","Hypertension or Pre Hypertensive",I10,medium,
+"Pulmonary and Pneumonias: Pulmonary hypertension","Pulmonary hypertension",,low,not in causelist
+"Shortness of breath","Dyspnea",R06.09,medium,duplicate
+"Pulmonary and Pneumonias: SOB (shortness of breath)","Dyspnea",R06.09,medium,duplicate
+"Chronic obstructive pulmonary disease","COPD",J44.9,high,duplicate
+"Palpitation","Arrhythmia",I49,medium,variant
+"Type II","Type 2 Diabetes",E11.2,medium,ambiguous
+"Osteoarthritis",,,low,not in causelist
+"BPH (benign prostatic hyperplasia)",,,low,not in causelist
+"Eye: Cataract",,,low,not in causelist
+"Iron deficiency anemia",,,low,not in causelist
+"Dizziness",,,low,symptom
+"Myopia of both eyes with astigmatism and presbyopia",,,low,not in causelist
+"Pseudophakia",,,low,not in causelist
+"Osteopenia",,,low,not in causelist
+"Gastroesophageal reflux disease","GERD",,low,not in disease causelist mapping
+"GERD (gastroesophageal reflux disease)","GERD",,low,duplicate

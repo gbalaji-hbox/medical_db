@@ -1,0 +1,76 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# Pytest
+.pytest_cache/
+
+# mypy
+.mypy_cache/
+
+# Coverage and cache
+.coverage
+htmlcov/
+.cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# VSCode
+.vscode/
+.history/
+
+# JetBrains
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Output and data files
+output/
+*.xlsx
+*.xls
+*.xlsm
+
+# Logs
+*.log
+
+# Temporary
+*.tmp
+*.bak
+~$*
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Secrets
+*.pem
+*.key
+
+# Mac/Linux
+*.swp
+
+# Windows
+Thumbs.db
+
+# Ignore local mapping backups
+mappings/*.bak
+
+# Keep template and disease data tracked
+!template/
+!disease/
