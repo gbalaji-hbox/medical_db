@@ -5,16 +5,17 @@ import pandas as pd
 from datetime import datetime
 # Ensure repo root is on sys.path so `constants` can be imported when running from `scripts/`
 REPO_ROOT = os.path.dirname(os.path.dirname(__file__))
-if REPO_ROOT not in sys.path:
-    sys.path.insert(0, REPO_ROOT)
+CIM_ROOT = os.path.join(REPO_ROOT, 'src', 'CIM')
+if CIM_ROOT not in sys.path:
+    sys.path.insert(0, CIM_ROOT)
 import constants
 
 BASE = os.path.dirname(os.path.dirname(__file__))
-HBOX_PATH = os.path.join(BASE, 'Hbox list 3 9 26.xlsx')
-TEMPLATE_PATH = os.path.join(BASE, 'template', 'consolidated_view-template.xlsx')
-DISEASE_CSV = os.path.join(BASE, 'disease', 'api_prescriptioncauselist_202603101243.csv')
-CAUSE_SEVERITY = os.path.join(BASE, 'mappings', 'cause_severity.csv')
-OUTPUT_DIR = os.path.join(BASE, 'output')
+HBOX_PATH = os.path.join(CIM_ROOT, 'Hbox list 3 9 26.xlsx')
+TEMPLATE_PATH = os.path.join(CIM_ROOT, 'template', 'consolidated_view-template.xlsx')
+DISEASE_CSV = os.path.join(CIM_ROOT, 'disease', 'api_prescriptioncauselist_202603101243.csv')
+CAUSE_SEVERITY = os.path.join(CIM_ROOT, 'mappings', 'cause_severity.csv')
+OUTPUT_DIR = os.path.join(CIM_ROOT, 'output')
 OUTPUT_XLSX = os.path.join(OUTPUT_DIR, 'consolidated_filled.xlsx')
 
 PHONE_LABELS = {

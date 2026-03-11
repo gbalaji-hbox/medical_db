@@ -3,12 +3,19 @@ import re
 import pandas as pd
 
 BASE = os.path.dirname(os.path.dirname(__file__))
-HBOX_PATH = os.path.join(BASE, 'Hbox list 3 9 26.xlsx')
+HBOX_PATH = os.path.join(BASE, 'src', 'CIM', 'Hbox list 3 9 26.xlsx')
 DISEASE_CSV = os.path.join(BASE, 'disease', 'api_prescriptioncauselist_202603101243.csv')
-OUT_DIR = os.path.join(BASE, 'mappings')
+OUT_DIR = os.path.join(BASE, 'src', 'CIM', 'mappings')
 OUT_CSV = os.path.join(OUT_DIR, 'problem_list_mapping.csv')
 OUT_SUGGEST = os.path.join(OUT_DIR, 'problem_primary_suggestions.csv')
-CAUSE_SEVERITY = os.path.join(os.path.dirname(__file__), '..', 'mappings', 'cause_severity.csv')
+CAUSE_SEVERITY = os.path.join(BASE, 'src', 'CIM', 'mappings', 'cause_severity.csv')
+    
+    CIM_ROOT = os.path.join(BASE, 'src', 'CIM')
+    DISEASE_CSV = os.path.join(CIM_ROOT, 'disease', 'api_prescriptioncauselist_202603101243.csv')
+    OUT_DIR = os.path.join(CIM_ROOT, 'mappings')
+    OUT_CSV = os.path.join(OUT_DIR, 'problem_list_mapping.csv')
+    OUT_SUGGEST = os.path.join(OUT_DIR, 'problem_primary_suggestions.csv')
+    CAUSE_SEVERITY = os.path.join(CIM_ROOT, 'mappings', 'cause_severity.csv')
 
 SEPARATORS = re.compile(r'[;,|/\\\n]+')
 

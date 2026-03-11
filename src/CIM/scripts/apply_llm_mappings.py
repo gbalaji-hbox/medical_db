@@ -5,7 +5,7 @@ import subprocess
 import pandas as pd
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-MAPPINGS_DIR = os.path.join(ROOT, "mappings")
+MAPPINGS_DIR = os.path.join(ROOT, "src", "CIM", "mappings")
 EXISTING = os.path.join(MAPPINGS_DIR, "problem_list_mapping.csv")
 LLM = os.path.join(MAPPINGS_DIR, "problem_list_llm_mapping.csv")
 BACKUP = os.path.join(MAPPINGS_DIR, "problem_list_mapping.bak.csv")

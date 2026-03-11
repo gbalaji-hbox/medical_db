@@ -1,9 +1,10 @@
+# No template or output folder references to update in this script
 import pandas as pd, re, os
 from collections import Counter
 SEPARATORS=re.compile(r'[;,|/\\\n]+')
-HBOX='Hbox list 3 9 26.xlsx'
-MAP='mappings/problem_list_mapping.csv'
-out='mappings/problem_list_top_unmatched.csv'
+HBOX='src/CIM/Hbox list 3 9 26.xlsx'
+MAP='src/CIM/mappings/problem_list_mapping.csv'
+out='src/CIM/mappings/problem_list_top_unmatched.csv'
 mdf=pd.read_csv(MAP)
 unmatched=set(mdf[mdf['matched_cause'].isnull()]['token'].astype(str))
 
@@ -16,8 +17,8 @@ for s in df['Problem List'].dropna().astype(str):
             cnt[t]+=1
 
 top=cnt.most_common(200)
-if not os.path.exists('mappings'):
-    os.makedirs('mappings')
+if not os.path.exists('src/CIM/mappings'):
+    os.makedirs('src/CIM/mappings')
 with open(out,'w',encoding='utf8') as f:
     f.write('token,count\n')
     for t,c in top:

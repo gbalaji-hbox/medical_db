@@ -45,9 +45,9 @@ def classify_insurance(ins_text: str) -> str:
     return 'other'
 
 
-# Problem-list token -> (cause, icd) mapping will be loaded from mappings/problem_list_mapping.csv
+# Problem-list token -> (cause, icd) mapping will be loaded from src/CIM/mappings/problem_list_mapping.csv
 PROBLEM_TO_ICD = {}
-_mapping_path = os.path.join(os.path.dirname(__file__), 'mappings', 'problem_list_mapping.csv')
+_mapping_path = os.path.join(os.path.dirname(__file__), 'src', 'CIM', 'mappings', 'problem_list_mapping.csv')
 if os.path.exists(_mapping_path):
     try:
         _df = pd.read_csv(_mapping_path)

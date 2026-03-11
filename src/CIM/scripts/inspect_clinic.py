@@ -3,7 +3,8 @@ import sys
 import pandas as pd
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-HBOX = os.path.join(ROOT, 'Hbox list 3 9 26.xlsx')
+CIM_ROOT = os.path.join(ROOT, 'CIM')
+HBOX = os.path.join(CIM_ROOT, 'Hbox list 3 9 26.xlsx')
 
 def main():
     df = pd.read_excel(HBOX, sheet_name='Sheet1', engine='openpyxl')
