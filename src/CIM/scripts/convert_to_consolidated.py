@@ -4,7 +4,7 @@ import sys
 import pandas as pd
 from datetime import datetime
 # Ensure repo root is on sys.path so `constants` can be imported when running from `scripts/`
-REPO_ROOT = os.path.dirname(os.path.dirname(__file__))
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
 CIM_ROOT = os.path.join(REPO_ROOT, 'src', 'CIM')
 if CIM_ROOT not in sys.path:
     sys.path.insert(0, CIM_ROOT)

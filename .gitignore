@@ -41,10 +41,7 @@ htmlcov/
 Thumbs.db
 
 # Output and data files
-output/
-*.xlsx
-*.xls
-*.xlsm
+
 
 # Logs
 *.log

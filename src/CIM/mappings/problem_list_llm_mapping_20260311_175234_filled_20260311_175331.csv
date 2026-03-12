@@ -1,0 +1,201 @@
+token,count,candidate_1_name,candidate_1_icd,candidate_1_matchtype,candidate_2_name,candidate_2_icd,candidate_2_matchtype,candidate_3_name,candidate_3_icd,candidate_3_matchtype,candidate_4_name,candidate_4_icd,candidate_4_matchtype,candidate_5_name,candidate_5_icd,candidate_5_matchtype,llm_suggested_cause,llm_suggested_icd,notes
+Endocrine and Metabolic: Disorder of thyroid,131,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Coronary atherosclerosis of native coronary artery,115,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Heart hypertrophy,103,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Other specified pulmonary heart diseases,65,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Nonrheumatic aortic valve regurgitation,60,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Family history of cardiac disorder,47,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Other: Aneurysm of aortic arch without rupture (CMS-hcc),38,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Coronary artery disease involving autologous vein coronary bypass graft without angina pectoris,37,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Atherosclerosis of native coronary artery without angina pectoris,34,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Family history of ischemic heart disease,32,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Endocrine and Metabolic: Exercise counseling,32,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Coronary atherosclerosis of autologous vein bypass graft without angina,31,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+FH: heart disease,29,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Elevated blood pressure reading without diagnosis of hypertension,27,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Nonrheumatic tricuspid (valve) insufficiency,27,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Symptoms and Signs: Light-headedness,25,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Other: Other supraventricular tachycardia (HHS-HCC),24,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Benign hypertensive heart disease without heart failure,23,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Dizziness and giddiness,19,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Encounter for pre-operative cardiovascular clearance,19,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Atherosclerosis of CABG w,18,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Screening for ischemic heart disease,16,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Coronary artery disease involving native heart without angina pectoris,16,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Pulmonary and Pneumonias: Solitary pulmonary nodule,16,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Right bundle branch block,15,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Nonrheumatic aortic (valve) stenosis,14,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Encounter for screening for cardiovascular disorders,14,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Arteriosclerosis of coronary artery bypass graft,13,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Repeated falls,13,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Pulmonary and Pneumonias: Solitary lung nodule,13,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Atherosclerosis of native artery of both lower extremities with intermittent claudication (CMS-hcc),13,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Atherosclerotic heart disease,13,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Family history of ischemic heart disease and other diseases of the circulatory system,12,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Unspecified atherosclerosis of native arteries of extremities,12,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Musculoskeletal and Injuries: Pain in leg,12,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Obstructive sleep apnea (adult) (pediatric),12,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Symptoms and Signs: Vasovagal attack,12,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Nonrheumatic mitral (valve) insufficiency,12,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Atherosclerosis of native coronary artery of native heart,12,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Coag and Thromboembolic: Deep vein thrombosis (DVT) of proximal lower extremity,12,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Peripheral arterial occlusive disease (CMS-hcc),12,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Eye: Visual disturbance,11,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Hypertensive heart disease without HF (heart failure),11,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Hypertensive heart disease without congestive heart failure,11,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Other: Mild obstructive sleep apnea in adult,11,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Other nonrheumatic mitral valve disorders,11,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Coag and Thromboembolic: Deep vein thrombosis (DVT) of distal vein of lower extremity,11,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Gastrointestinal and Abdominal: Gastrointestinal bleeding,10,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+ECG abnormal,10,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Screening for ischemic heart disease,10,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Hematology and Neoplasia: Cancer of female breast,10,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Right BBB,10,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Deep vein thrombosis (DVT),10,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Tobacco: Personal history of smoking,10,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Gastrointestinal and Abdominal: Hx of adenomatous colonic polyps,9,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Generalized edema,9,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Lumbosacral radiculitis,9,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Other: Refractory angina pectoris (CMS-hcc),9,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Other: Nonrheumatic mitral (valve) annulus calcification,9,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Family history of sudden cardiac death (SCD),9,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Hypertensive heart disease without CHF (congestive heart failure),9,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Musculoskeletal and Injuries: Fall from standing,8,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+other extremity,8,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Atherosclerosis of coronary artery bypass graft,8,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Musculoskeletal and Injuries: Falls,8,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Thoracic aortic ectasia (CMS-hcc),8,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+left ant fasc block,8,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Diastolic heart failure,8,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Mild mitral valve regurgitation,8,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Angina pectoris,8,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Occlusion of left carotid artery,8,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Atherosclerotic cardiovascular disease,8,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Cardiac murmur,8,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Multi System Lupus Sarcoid: Autoimmune disease (HHS-HCC),8,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Coronary atherosclerosis due to calcified coronary lesion,7,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Occlusion and stenosis of right carotid artery,7,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Musculoskeletal and Injuries: Pain in both lower legs,7,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Coronary atherosclerosis of autologous vein bypass graft without angina,7,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Aortic valve replaced,7,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Heart valve replaced,7,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Musculoskeletal and Injuries: Rhabdomyolysis,7,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Factor V Leiden mutation (HHS-HCC),7,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+chronic disease,7,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Vertebrogenic low back pain,7,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Eye: Mild nonproliferative diabetic retinopathy of both eyes associated with type 2 diabetes mellitus,7,2,Obesity,substring,,,,,,,,,,,,,2,Obesity,filled_from_candidate_1
+Cardiac and Vasculature: Encounter for preprocedural cardiovascular examination,7,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Elevated Lp(a),7,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Atrial premature beats,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Genitourinary and Reproductive: Blood in urine,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Abnormal findings on diagnostic imaging of heart and coronary circulation,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Hematology and Neoplasia: Family history of malignant neoplasm of digestive organs,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Other specified peripheral vascular diseases,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Arthropathy of lumbar facet joint,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: ASD (atrial septal defect) (HHS-HCC),6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Coronary atherosclerosis of artery bypass graft,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Coag and Thromboembolic: Platelets decreased,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+O: stroke,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Neuroma,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Musculoskeletal and Injuries: Pain in right lower leg,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+class 3 (CMS-HCC),6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.11
+Occlusion and stenosis of unspecified carotid artery,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Musculoskeletal and Injuries: Lumbar pain,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Status post insertion of drug-eluting stent into left anterior descending (LAD) artery,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Musculoskeletal and Injuries: Lower leg pain,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Radiculitis,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Gastrointestinal and Abdominal: Intestinal polyps,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Class 3 severe obesity with serious comorbidity and body mass index (BMI) of 40.0 to 44.9 in adult (CMS-HCC),6,4,COPD,substring,9,CHF (Congestive Heart Failure),substring,,,,,,,,,,4,COPD,filled_from_candidate_1
+Polyarthropathy,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Scoliosis of lumbar spine,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Musculoskeletal and Injuries: Acquired spondylolisthesis,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+class 2,6,2,Obesity,substring,,,,,,,,,,,,,2,Obesity,filled_from_candidate_1
+post-operative,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Congestive heart disease,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Elevated blood pressure reading in office with diagnosis of hypertension,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Unexplained weight loss,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Genitourinary and Reproductive: SUI (stress urinary incontinence,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Coag and Thromboembolic: DVT (deep vein thrombosis) in pregnancy (HHS-HCC),6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Family history of chronic ischemic heart disease,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Mental Health: EtOH dependence,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Coronary atherosclerosis of autologous vein bypass graft,6,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+History of basal cell carcinoma (BCC) of skin,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Follow up,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+gross,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Esophoria,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Family history of CHF (congestive heart failure),5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Musculoskeletal and Injuries: Status post total replacement of left hip,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Other specified pulmonary heart diseases,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Arterial ischemic stroke,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Coronary atherosclerosis due to lipid rich plaque,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Eye: Nonproliferative diabetic retinopathy,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Venous insufficiency of leg,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+dilated,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Type 2 diabetes mellitus with other diabetic kidney complication,5,2,Obesity,substring,,,,,,,,,,,,,2,Obesity,filled_from_candidate_1
+Mild recurrent major depression (CMS-hcc),5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Arteriosclerotic cardiovascular disease,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Advance Directives and Health Issues: Risk for falls,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Mitral prolapse,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Other idiopathic scoliosis,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Vascular calcification,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Labile hypertension,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Solitary lung nodule,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Atherosclerotic heart disease of native coronary artery with angina pectoris,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Gastrointestinal and Abdominal: Vomiting,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Primary malignant neoplasm of female breast,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Coag and Thromboembolic: Decreased platelet count,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cancer of female breast,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Severe obesity (CMS-HCC),5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Genitourinary and Reproductive: Acquired absence of both cervix and uterus,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+ENT: TMJ (dislocation of temporomandibular joint),5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Pain in lower limb,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Abnormal electrocardiogram (ECG) (EKG),5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Mitral valve regurgitation,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Eye: Wears eyeglasses,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Infectious Disease: Septic joint,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Body mass index (BMI) 32.0-32.9,5,2,Obesity,substring,32,Angina Pectoris,substring,9,CHF (Congestive Heart Failure),substring,,,,,,,2,Obesity,filled_from_candidate_1
+Coronary atherosclerosis due to lipid rich plaque,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Spinal stenosis of cervical region,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Status post combined aortic root and valve replacement using stentless bioprosthetic aortic valve,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Coronary artery disease involving native coronary artery,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Hypertensive heart disease with combined systolic and diastolic congestive heart failure,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Enthesopathy of foot,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Stress at home,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Elevated triglycerides with high cholesterol,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Neuralgia of right sciatic nerve,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Presence of cardiac pacemaker,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+unspecified whether old or current tear,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Body mass index 27.0-27.9,5,27,Arrhythmia,substring,2,Obesity,substring,7,Pulmonary Fibrosis,substring,9,CHF (Congestive Heart Failure),substring,,,,27,Arrhythmia,filled_from_candidate_1
+Symptoms and Signs: Need for home health care,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Pre-operative clearance,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Atherosclerosis of native coronary artery of native heart with stable angina pectoris,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: New onset a-fib,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Endocrine and Metabolic: Decreased testosterone level,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Systolic congestive heart failure,5,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Raynaud phenomenon,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Non-rheumatic mitral valve stenosis,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Inflammatory polyarthritis,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Mental Health: Chronic anxiety,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Coag and Thromboembolic: Thrombophlebitis,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Eye: Mild nonproliferative diabetic retinopathy associated with type 2 diabetes mellitus,4,2,Obesity,substring,,,,,,,,,,,,,2,Obesity,filled_from_candidate_1
+Spondylolisthesis at L4-L5 level,4,4,COPD,substring,,,,,,,,,,,,,4,COPD,filled_from_candidate_1
+Preprocedural cardiovascular examination,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Hormone replacement therapy,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Cardiac and Vasculature: Atrioventricular block,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Other abnormal and inconclusive findings on diagnostic imaging of breast,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Blurring of visual image,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Other: Body mass index (BMI) 19.9 or less,4,1,Hypertension or Pre Hypertensive,substring,9,CHF (Congestive Heart Failure),substring,19,Hypotension,substring,,,,,,,1,Hypertension or Pre Hypertensive,filled_from_candidate_1
+Peripheral edema,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Unspecified diastolic (congestive) heart failure,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Malignant tumor of breast,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Mitral valve replaced,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Hematology and Neoplasia: Renal cell carcinoma,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Mental Health: Chronic,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Symptoms and Signs: Falls frequently,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Chronic pulmonary embolism,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Mental Health: Attention deficit hyperactivity disorder,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Hematology and Neoplasia: Esophageal cancer,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Type 2 diabetes mellitus with peripheral angiopathy,4,2,Obesity,substring,,,,,,,,,,,,,2,Obesity,filled_from_candidate_1
+unipolar,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Accident due to mechanical fall without injury,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
+Shoulder impingement,4,,,,,,,,,,,,,,,,,,no_match_best_ratio_0.00
