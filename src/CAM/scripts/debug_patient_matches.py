@@ -4,7 +4,7 @@ import pandas as pd
 
 # ensure module import paths
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from scripts.convert_data_new_to_template import find_problem_matches
+from CAM.scripts.convert_data_new_to_template import find_problem_matches
 
 DATA_PATH = os.path.join('src', 'CIM', 'data_new.xlsx')
 DISEASE_CSV = os.path.join('src', 'CIM', 'disease', 'api_prescriptioncauselist_202603101243.csv')
