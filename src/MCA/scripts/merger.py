@@ -213,49 +213,67 @@ class PatientsInsuranceMerger:
                     'emergency_contact_number': record.get('emergency_contact_number', '')
                 }
 
-        # Merge data
-        merged_records = []
-
-        # Process patients data and add insurance and patient list information
+        # Merge data with intelligent deduplication - keep all diagnoses per patient
+        from collections import defaultdict
+        patient_groups = defaultdict(list)
+        
+        # Group records by patient_id
         for record in patients_records:
             patient_id = record.get('patient_id', '').strip()
-            patient_name = record.get('name', '').strip()
-            patient_dob = record.get('dob', '').strip()
-            provider_data = record.get('provider_data', '').strip()
-
+            if patient_id:
+                patient_groups[patient_id].append(record)
+        
+        merged_records = []
+        
+        # Process each unique patient
+        for patient_id, patient_records in patient_groups.items():
             # Get insurance data for this patient if available
             insurance_data = insurance_dict.get(patient_id, {})
-
+            
             # Get patient list data using patient_id only
             patient_list_data = patient_list_dict.get(patient_id, {})
-
+            
+            # Use the first record as the base
+            base_record = patient_records[0]
+            
+            # Collect all diagnoses and ICD codes for this patient
+            all_diagnoses = []
+            all_icds = []
+            for record in patient_records:
+                diagnosis = record.get('diagnosis', '').strip()
+                icd = record.get('icd_code', '').strip()
+                if diagnosis:
+                    all_diagnoses.append(diagnosis)
+                if icd:
+                    all_icds.append(icd)
+            
             merged_records.append({
                 "patient_id": patient_id,
-                "patient_name": insurance_data.get('patient_name', patient_name),  # Prefer insurance name
-                "address": patient_list_data.get('address', insurance_data.get('address', record.get('address', ''))),  # Street address from patient list
+                "patient_name": insurance_data.get('patient_name', base_record.get('name', '')),  # Prefer insurance name
+                "address": patient_list_data.get('address', insurance_data.get('address', base_record.get('address', ''))),  # Street address from patient list
                 "city": patient_list_data.get('city', ''),  # City from patient list
                 "state": patient_list_data.get('state', ''),  # State from patient list
                 "zip": patient_list_data.get('zip', ''),  # ZIP from patient list
                 "home_number": insurance_data.get('home_number', ''),  # From insurance/visits merge
                 "mobile_number": insurance_data.get('mobile_number', ''),  # From insurance/visits merge
                 "sex": insurance_data.get('sex', ''),  # From insurance only
-                "dob": insurance_data.get('dob', patient_dob),  # Prefer insurance DOB
-                "email": record.get('email', ''),  # From patients only
+                "dob": insurance_data.get('dob', base_record.get('dob', '')),  # Prefer insurance DOB
+                "email": base_record.get('email', ''),  # From patients only
                 "emergency_contact": patient_list_data.get('emergency_contact', ''),  # From patient list
                 "emergency_contact_number": patient_list_data.get('emergency_contact_number', ''),  # From patient list
-                "diagnosis": record.get('diagnosis', ''),  # From patients only
-                "icd": record.get('icd_code', ''),  # From patients only (renamed from icd_code)
+                "all_diagnoses": "|".join(all_diagnoses),  # Store all diagnoses for comorbidity processing
+                "all_icds": "|".join(all_icds),  # Store all ICDs for comorbidity processing
                 "member_id": insurance_data.get('member_id', ''),  # From insurance only
                 "payer": insurance_data.get('payer', ''),  # From insurance only
-                "last_visit": insurance_data.get('last_visit', record.get('last_visit_date', '')),  # Prefer insurance last_visit
-                "provider_data": provider_data
+                "last_visit": insurance_data.get('last_visit', base_record.get('last_visit_date', '')),  # Prefer insurance last_visit
+                "provider_data": base_record.get('provider_data', '')
             })
 
         # Define output columns
         fieldnames = [
             "patient_id", "patient_name", "address", "city", "state", "zip", "home_number", "mobile_number",
             "sex", "dob", "email", "emergency_contact", "emergency_contact_number",
-            "diagnosis", "icd", "member_id", "payer", "last_visit", "provider_data"
+            "all_diagnoses", "all_icds", "member_id", "payer", "last_visit", "provider_data"
         ]
 
         # Write final merged data

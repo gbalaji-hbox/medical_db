@@ -186,15 +186,18 @@ class TemplateFormatter:
         # Fallback: return as-is if format not recognized
         return provider_data
 
-    def _map_diagnosis_to_comorbidities(self, diagnosis: str, icd: str) -> Tuple[Dict[str, str], str, str]:
-        """Map diagnosis text and ICD code to comorbidity flags and return primary DX and ICD.
+    def _map_diagnosis_to_comorbidities(self, all_diagnoses: str, all_icds: str) -> Tuple[Dict[str, str], str, str, str, str]:
+        """Map all diagnoses for a patient to comorbidity flags and return primary/secondary DX and ICD.
 
-        Only assigns comorbidity flags and PRIMARY DX when there's a clear match with the API prescription list.
-        Uses token-based matching - only sets 'YES' when there's a confirmed ICD code match.
+        Processes ALL diagnoses to set comprehensive comorbidity flags.
+        Returns the first two matching diagnoses as Primary and Secondary.
+        Only assigns comorbidity flags and DX when there's a clear match with the API prescription list.
         """
         comorbidities = {}
         primary_dx = ''
         primary_icd = ''
+        secondary_dx = ''
+        secondary_icd = ''
 
         # Initialize all comorbidities to 'NO'
         comorbidity_columns = [
@@ -209,39 +212,46 @@ class TemplateFormatter:
         for col in comorbidity_columns:
             comorbidities[col] = 'NO'
 
-        # Only proceed with matching if we have an ICD code
-        if icd and icd.strip():
-            icd_clean = icd.strip()
+        # Split all diagnoses and ICDs
+        diagnoses_list = [d.strip() for d in all_diagnoses.split('|') if d.strip()]
+        icds_list = [i.strip() for i in all_icds.split('|') if i.strip()]
+        
+        # Pair diagnoses with their ICD codes
+        diagnosis_pairs = list(zip(diagnoses_list, icds_list)) if len(diagnoses_list) == len(icds_list) else []
+        
+        matching_diagnoses = []  # Store (diagnosis, icd, cause) tuples for matches
+        
+        # Process each diagnosis-ICD pair
+        for diagnosis, icd in diagnosis_pairs:
+            if not icd:
+                continue
+                
             matched_cause = None
 
             # Try exact match first
-            if icd_clean in self.cause_mapping:
-                matched_cause = self.cause_mapping[icd_clean]
-                primary_icd = icd_clean
+            if icd in self.cause_mapping:
+                matched_cause = self.cause_mapping[icd]
             else:
                 # Try range matching with special diabetes handling
                 diabetes_codes = ['E10', 'E11', 'E13']
-                if any(icd_clean.startswith(code) for code in diabetes_codes):
+                if any(icd.startswith(code) for code in diabetes_codes):
                     # Find the diabetes entry in the mapping
                     for mapped_icd, cause_name in self.cause_mapping.items():
                         if cause_name == 'Type 2 Diabetes':
                             matched_cause = cause_name
-                            primary_icd = mapped_icd
                             break
                 else:
                     # Regular range matching for other conditions
                     for mapped_icd, cause_name in self.cause_mapping.items():
-                        if icd_clean.startswith(mapped_icd.split('.')[0]):
+                        if icd.startswith(mapped_icd.split('.')[0]):
                             matched_cause = cause_name
-                            primary_icd = mapped_icd
                             break
 
-            # Only set PRIMARY DX and comorbidity if we found a match
+            # If we found a match, add to matching diagnoses and set comorbidity
             if matched_cause:
-                primary_dx = matched_cause
+                matching_diagnoses.append((diagnosis, icd, matched_cause))
 
                 # Map cause name to comorbidity column and set to 'YES'
-                # Only conditions that should set comorbidity flags are included here
                 cause_to_comorbidity = {
                     'Coronary Artery Disease': 'CORONARY ARTERY DISEASE',
                     'Arrhythmia': 'ARRHYTHMIA',
@@ -272,9 +282,16 @@ class TemplateFormatter:
                 if matched_cause in cause_to_comorbidity:
                     comorbidities[cause_to_comorbidity[matched_cause]] = 'YES'
 
-        # No fallback to text matching - only ICD code matches from API list are accepted
+        # Set Primary and Secondary DX/ICD from the first two matching diagnoses
+        if len(matching_diagnoses) >= 1:
+            primary_dx = matching_diagnoses[0][2]  # Use the cause name
+            primary_icd = matching_diagnoses[0][1]  # Use the ICD code
+            
+        if len(matching_diagnoses) >= 2:
+            secondary_dx = matching_diagnoses[1][2]  # Use the cause name  
+            secondary_icd = matching_diagnoses[1][1]  # Use the ICD code
 
-        return comorbidities, primary_dx, primary_icd
+        return comorbidities, primary_dx, primary_icd, secondary_dx, secondary_icd
 
     def format_data(self) -> int:
         """Transform consolidated CSV to template format."""
@@ -287,8 +304,18 @@ class TemplateFormatter:
             # Parse patient name
             last_name, first_name, middle_name, full_name = self._parse_patient_name(str(row.get('patient_name', '')))
 
+            # Skip test records - check for specific test names
+            patient_name_lower = str(row.get('patient_name', '')).lower().strip()
+            test_names = [
+                'tester, randell', 'test, test', 'test,blanche', 'test, allison',
+                'tester, testy', 'test,mickey', 'test, blanche', 'test, mickey'
+            ]
+            
+            if patient_name_lower in test_names or last_name.lower().strip() == 'test':
+                continue
+
             # Map diagnosis to comorbidities
-            comorbidities, primary_dx, primary_icd = self._map_diagnosis_to_comorbidities(str(row.get('diagnosis', '')), str(row.get('icd', '')))
+            comorbidities, primary_dx, primary_icd, secondary_dx, secondary_icd = self._map_diagnosis_to_comorbidities(str(row.get('all_diagnoses', '')), str(row.get('all_icds', '')))
 
             # Classify insurance type
             insurance_type = classify_insurance(str(row.get('payer', '')))
@@ -368,9 +395,9 @@ class TemplateFormatter:
                 'HYPOXEMIA': comorbidities.get('HYPOXEMIA', 'NO'),
                 # Diagnosis fields
                 'PRIMARY DX': primary_dx,
-                'SECONDARY DX': '',  # Not available
+                'SECONDARY DX': secondary_dx,
                 'PRIMARY ICD': primary_icd,
-                'SECONDARY ICD': '',  # Not available
+                'SECONDARY ICD': secondary_icd,
                 'LAST SEEN DATE': last_seen_date,
                 'NEXT APPT': '',  # Not available
                 'PROVIDER DATA': row.get('provider_data', ''),
