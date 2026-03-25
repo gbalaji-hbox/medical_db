@@ -41,7 +41,7 @@ CERBOVASCULAR_ACCIDENT,Problem List,high,"Match via disease CSV cause 'Cerebrova
 HYPERLIPIDEMIA,Problem List,high,"Match via disease CSV cause 'Hyperlipidemia'"
 ANGINA_PECTORIS,Problem List,high,"Match via disease CSV cause 'Angina Pectoris'"
 HYPOTENSION,Problem List,high,"Match via disease CSV cause 'Hypotension'"
-HYPERTENSION,Problem List,high,"Match via disease CSV cause 'Hypertension or Pre Hypertensive'"
+HYPERTENSION,Problem List,high,"Match via disease CSV cause 'Hypertension'"
 OBESITY,Problem List,high,"Match via disease CSV cause 'Obesity'"
 DIABETES,Problem List,high,"Match via disease CSV cause 'Type 2 Diabetes'"
 CHRONIC_KIDNEY_DISEASE,Problem List,high,"Match via disease CSV cause 'Chronic Kidney'"

@@ -1,6 +1,7 @@
 import re
 import os
 import sys
+import json
 import pandas as pd
 from datetime import datetime
 # Ensure repo root is on sys.path so `constants` can be imported when running from `scripts/`
@@ -11,12 +12,15 @@ if CIM_ROOT not in sys.path:
 import constants
 
 BASE = os.path.dirname(os.path.dirname(__file__))
-HBOX_PATH = os.path.join(CIM_ROOT, 'Hbox list 3 9 26.xlsx')
+HBOX_PATH = os.path.join(CIM_ROOT, 'Final_Hbox_3_19_26.xlsx')
 TEMPLATE_PATH = os.path.join(CIM_ROOT, 'template', 'consolidated_view-template.xlsx')
 DISEASE_CSV = os.path.join(CIM_ROOT, 'disease', 'api_prescriptioncauselist_202603101243.csv')
 CAUSE_SEVERITY = os.path.join(CIM_ROOT, 'mappings', 'cause_severity.csv')
 OUTPUT_DIR = os.path.join(CIM_ROOT, 'output')
 OUTPUT_XLSX = os.path.join(OUTPUT_DIR, 'consolidated_filled.xlsx')
+# mapping CSV (prefer generated mapping if present)
+GENERATED_MAP = os.path.join(CIM_ROOT, 'mappings', 'column_mapping_generated.csv')
+DEFAULT_MAP = os.path.join(CIM_ROOT, 'mappings', 'column_mapping.csv')
 
 PHONE_LABELS = {
     'home': ['hm', 'home'],
@@ -183,11 +187,156 @@ def format_provider_person(s):
         return f"{first} {last}"
     return s
 
+def is_non_name_artifact(s):
+    """Return True if the string looks like a non-name artifact (time, date, numeric id)."""
+    if s is None:
+        return True
+    t = str(s).strip()
+    if not t:
+        return True
+    # common time artifact like 00:00:00
+    if re.search(r"\b\d{1,2}:\d{2}:\d{2}\b", t):
+        return True
+    # ISO date or mm/dd/yyyy
+    if re.search(r"\b\d{4}-\d{2}-\d{2}\b", t) or re.search(r"\b\d{1,2}[/\-]\d{1,2}[/\-]\d{2,4}\b", t):
+        return True
+    # purely numeric or bracketed numeric ids
+    if re.fullmatch(r"\[?\d{3,}\]?", t):
+        return True
+    # short numeric strings
+    if re.fullmatch(r"\d{3,}\b", t):
+        return True
+    return False
+
+
+def normalize_relationship(s):
+    """Normalize emergency contact relationship values to full, proper-case words.
+    Handles common abbreviations found in the raw data (e.g. 'son', 'daug', 'frie').
+    Returns None for empty input.
+    """
+    if s is None:
+        return None
+    s = str(s).strip()
+    if not s:
+        return None
+    # remove punctuation
+    s_clean = re.sub(r'[\.,;:\(\)\[\]"\']', '', s).strip()
+    # lower for matching
+    key = s_clean.lower()
+    # common normalization map (expand abbreviations / misspellings)
+    norm_map = {
+        'son': 'Son',
+        'dau': 'Daughter',
+        'daug': 'Daughter',
+        'daughter': 'Daughter',
+        'wife': 'Wife',
+        'husb': 'Husband',
+        'husband': 'Husband',
+        'mom': 'Mother',
+        'mother': 'Mother',
+        'dad': 'Father',
+        'father': 'Father',
+        'bro': 'Brother',
+        'brother': 'Brother',
+        'sis': 'Sister',
+        'sister': 'Sister',
+        'frie': 'Friend',
+        'friend': 'Friend',
+        'neph': 'Nephew',
+        'niece': 'Niece',
+        'other': 'Other',
+        'spouse': 'Spouse',
+        'self': 'Self',
+        'guardian': 'Guardian',
+        'grandson': 'Grandson',
+        'granddaughter': 'Granddaughter'
+    }
+    # if a precomputed relationship map exists (built from Hbox values), prefer it
+    if 'RELATIONSHIP_MAP' in globals() and key in globals().get('RELATIONSHIP_MAP', {}):
+        return globals()['RELATIONSHIP_MAP'][key]
+    # exact match
+    if key in norm_map:
+        return norm_map[key]
+    # token-based heuristics (take first token)
+    first = key.split()[0]
+    if first in norm_map:
+        return norm_map[first]
+    # fallback: title-case the cleaned value
+    return s_clean.title()
+
+
+def build_relationship_map(df, cols=None):
+    """Scan dataframe `df` for relationship-like columns and build a mapping
+    from raw token -> normalized relationship text. If `cols` is provided use
+    those columns; otherwise inspect common relationship headers.
+    """
+    if cols is None:
+        cols = ['Primary Emer Cont Rel', 'Emergency Relationship', 'Emerg Relation', 'Primary Emer Rel', 'Relationship']
+    raw_vals = set()
+    for c in df.columns:
+        if c in cols or any(k.lower() in str(c).lower() for k in ['emer', 'emerg', 'contact', 'rel']):
+            for v in df[c].dropna().unique():
+                raw_vals.add(str(v).strip())
+    mapping = {}
+    # seed map from existing norm_map inside normalize_relationship by calling it
+    for v in raw_vals:
+        norm = normalize_relationship(v)
+        mapping[v.strip().lower()] = norm
+    return mapping
+
+
+def match_cause_to_flag(cause, cause_to_flag):
+    """Attempt to match a cause string to a key in cause_to_flag using
+    normalized substring/exact matching. Returns the flag name or None."""
+    if not cause:
+        return None
+    cl = cause.strip().lower()
+    # exact match
+    if cl in cause_to_flag:
+        return cause_to_flag[cl]
+    # try substring matches
+    for k, flag in cause_to_flag.items():
+        if k in cl or cl in k:
+            return flag
+    return None
+
 
 def main():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     disease_df = load_diseases(DISEASE_CSV)
+    # load column mapping (use generated mapping if available)
+    map_path = GENERATED_MAP if os.path.exists(GENERATED_MAP) else DEFAULT_MAP
+    try:
+        map_df = pd.read_csv(map_path)
+    except Exception:
+        map_df = pd.DataFrame(columns=['template_column', 'hbox_source'])
 
+    # determine which column holds the source list
+    if 'suggested_hbox_sources' in map_df.columns:
+        source_col_name = 'suggested_hbox_sources'
+    elif 'hbox_source' in map_df.columns:
+        source_col_name = 'hbox_source'
+    else:
+        source_col_name = None
+
+    def get_mapped_value(row, tpl_col):
+        # return the first matching source value from mapping for template column
+        if source_col_name is None:
+            return None
+        r = map_df[map_df['template_column'] == tpl_col]
+        if r.empty:
+            return None
+        srcs = str(r.iloc[0][source_col_name])
+        # split on common separators
+        parts = [p.strip() for p in re.split(r'[;/,\\|]+', srcs) if p.strip()]
+        for p in parts:
+            # try exact column name, also try case-insensitive match
+            if p in row.index:
+                return row.get(p)
+            for c in row.index:
+                if isinstance(c, str) and c.strip().lower() == p.lower():
+                    return row.get(c)
+        return None
     # read template headers
     template_df = pd.read_excel(TEMPLATE_PATH, sheet_name=0, nrows=0, engine='openpyxl')
     template_cols = list(template_df.columns)
@@ -197,6 +346,20 @@ def main():
 
     # normalize column names (strip)
     hbox_df.columns = [c.strip() if isinstance(c, str) else c for c in hbox_df.columns]
+
+    # load canonical relationship map if present, otherwise build from Hbox
+    REL_MAP_PATH = os.path.join(CIM_ROOT, 'mappings', 'relationship_map.json')
+    RELATIONSHIP_MAP = {}
+    if os.path.exists(REL_MAP_PATH):
+        try:
+            with open(REL_MAP_PATH, 'r', encoding='utf-8') as f:
+                raw_map = json.load(f)
+            # normalize keys to lowercase for matching
+            RELATIONSHIP_MAP = {k.strip().lower(): v for k, v in raw_map.items()}
+        except Exception:
+            RELATIONSHIP_MAP = build_relationship_map(hbox_df)
+    else:
+        RELATIONSHIP_MAP = build_relationship_map(hbox_df)
 
     # precompute matches per row
     matches_col = []
@@ -236,13 +399,13 @@ def main():
         for _, row in group.iterrows():
             out = {c: None for c in template_cols}
             # direct mappings
-            out['EMR_ID'] = row.get('MRN')
+            out['EMR_ID'] = get_mapped_value(row, 'EMR_ID') or row.get('MRN')
             # preserve original EMR name field
-            out['PATIENT_EMR_NAME'] = row.get('Patient')
+            out['PATIENT_EMR_NAME'] = get_mapped_value(row, 'PATIENT_EMR_NAME') or row.get('Patient')
             # Patient name handling: Hbox `Patient` may be "Last, First". Prefer explicit first/last columns if present.
-            patient_field = row.get('Patient')
-            first_col = row.get('Patient First Name')
-            last_col = row.get('Patient Last Name')
+            patient_field = get_mapped_value(row, 'PATIENT_FULL_NAME') or row.get('Patient')
+            first_col = get_mapped_value(row, 'FIRST_NAME') or row.get('Patient First Name')
+            last_col = get_mapped_value(row, 'LAST_NAME') or row.get('Patient Last Name')
             if pd.notna(first_col) and pd.notna(last_col) and str(first_col).strip() and str(last_col).strip():
                 out['FIRST_NAME'] = str(first_col).strip()
                 out['LAST_NAME'] = str(last_col).strip()
@@ -271,16 +434,21 @@ def main():
                         out['FIRST_NAME'] = str(first_col).strip()
                     if not out.get('LAST_NAME') and pd.notna(last_col):
                         out['LAST_NAME'] = str(last_col).strip()
-            out['DATE_OF_BIRTH'] = row.get('DOB')
-            out['GENDER'] = row.get('Sex')
-            # street address concat: prefer `Street Address` then `Street Address Ln 3`.
-            sa = row.get('Street Address') if 'Street Address' in row else None
-            sa3 = row.get('Street Address Ln 3') if 'Street Address Ln 3' in row else None
-            if pd.notna(sa) and str(sa).strip():
-                if pd.notna(sa3) and str(sa3).strip():
-                    out['STREET_ADDRESS'] = f"{str(sa).strip()}, {str(sa3).strip()}"
+            out['DATE_OF_BIRTH'] = get_mapped_value(row, 'DATE_OF_BIRTH') or row.get('DOB')
+            out['GENDER'] = get_mapped_value(row, 'GENDER') or row.get('Sex')
+            # street address concat: handle multiple 'Street Address' columns.
+            # Per clinic: the second Street Address column contains home/appt number and
+            # should appear before the main street address ("appt no, street address").
+            # Collect all columns containing 'street address' (preserve column order),
+            # then if multiple parts exist, join them in reversed order so the second
+            # part appears first.
+            street_cols = [c for c in row.index if isinstance(c, str) and 'street address' in c.lower()]
+            street_vals = [str(row.get(c)).strip() for c in street_cols if pd.notna(row.get(c)) and str(row.get(c)).strip()]
+            if street_vals:
+                if len(street_vals) >= 2:
+                    out['STREET_ADDRESS'] = ', '.join(reversed(street_vals))
                 else:
-                    out['STREET_ADDRESS'] = str(sa).strip()
+                    out['STREET_ADDRESS'] = street_vals[0]
             else:
                 # fallback: scan for address-like columns but exclude email fields
                 addr_parts = []
@@ -296,45 +464,77 @@ def main():
                         if pd.notna(v) and str(v).strip():
                             addr_parts.append(str(v).strip())
                 out['STREET_ADDRESS'] = ', '.join(addr_parts) if addr_parts else None
-            out['CITY'] = row.get('Pt City')
-            out['ZIP'] = row.get('ZIP')
-            out['EMAIL_ADDRESS'] = row.get('Pt. E-mail Address')
-            out['LANGUAGE'] = row.get('Language')
-            out['EMERGENCY_CONTACT_NAME'] = row.get('Emergency Contact Name')
+            out['CITY'] = get_mapped_value(row, 'CITY') or row.get('Pt City')
+            out['ZIP'] = get_mapped_value(row, 'ZIP') or row.get('ZIP') or row.get('ZIP Code')
+            out['EMAIL_ADDRESS'] = get_mapped_value(row, 'EMAIL_ADDRESS') or row.get('Pt. E-mail Address')
+            out['LANGUAGE'] = get_mapped_value(row, 'LANGUAGE') or row.get('Language')
+            out['EMERGENCY_CONTACT_NAME'] = get_mapped_value(row, 'EMERGENCY_CONTACT_NAME') or row.get('Emergency Contact Name')
+            raw_rel = get_mapped_value(row, 'EMERGENCY_RELATIONSHIP') or row.get('Primary Emer Cont Rel') or row.get('Emergency Relationship')
+            out['EMERGENCY_RELATIONSHIP'] = normalize_relationship(raw_rel)
 
             # phones
-            phone = row.get('Phone')
+            phone = get_mapped_value(row, 'HOME_PHONE') or get_mapped_value(row, 'MOBILE_PHONE') or get_mapped_value(row, 'WORK_PHONE') or row.get('Phone') or row.get('Patient Home Phone') or row.get('Patient Cell Phone')
             ph = phone_parts(phone)
             out['HOME_PHONE'] = ph.get('home')
             out['MOBILE_PHONE'] = ph.get('mobile')
             out['WORK_PHONE'] = ph.get('work')
             # emergency contact phone
-            ec_ph = phone_parts(row.get('Emerg Contact Ph'))
+            ec_ph = phone_parts(get_mapped_value(row, 'EMERGENCY_CONTACT_HOME_PHONE') or row.get('Emerg Contact Ph'))
             out['EMERGENCY_CONTACT_HOME_PHONE'] = ec_ph.get('home')
             out['EMERGENCY_CONTACT_MOBILE_PHONE'] = ec_ph.get('mobile')
 
             # insurance
-            out['PRIMARY_INSURANCE'] = row.get('Primary Cvg') or row.get('Primary Payer')
-            out['PRIMARY_ID'] = row.get('Primary Mem ID') or row.get('Medicare Sub ID')
-            out['SECONDARY_INSURANCE'] = row.get('Secondary Cvg') or row.get('Secondary Payer')
-            out['SECONDARY_ID'] = row.get('Pat Secondary CVG Payer ID')
-            out['TERITARY_INSURANCE'] = row.get('Tertiary Payer')
-            out['TERITARY_ID'] = row.get('Tertiary Mem ID') or row.get('Pat Tertiary CVG Payer ID')
-            out['CO-PAY'] = row.get('Copay Due')
+            out['PRIMARY_INSURANCE'] = get_mapped_value(row, 'PRIMARY_INSURANCE') or row.get('Primary Cvg') or row.get('Primary Payer')
+            out['PRIMARY_ID'] = get_mapped_value(row, 'PRIMARY_ID') or row.get('Primary Mem ID') or row.get('Medicare Sub ID')
+            out['SECONDARY_INSURANCE'] = get_mapped_value(row, 'SECONDARY_INSURANCE') or row.get('Secondary Cvg') or row.get('Secondary Payer')
+            out['SECONDARY_ID'] = get_mapped_value(row, 'SECONDARY_ID') or row.get('Pat Secondary CVG Payer ID') or row.get('Secondary Mem ID')
+            out['TERITARY_INSURANCE'] = get_mapped_value(row, 'TERITARY_INSURANCE') or row.get('Tertiary Payer')
+            out['TERITARY_ID'] = get_mapped_value(row, 'TERITARY_ID') or row.get('Tertiary Mem ID') or row.get('Pat Tertiary CVG Payer ID')
+            out['CO-PAY'] = get_mapped_value(row, 'CO-PAY') or row.get('Copay Due')
             # classify insurance type using constants
             try:
                 out['INSURANCE_TYPE'] = constants.classify_insurance(str(out.get('PRIMARY_INSURANCE') or ''))
             except Exception:
                 out['INSURANCE_TYPE'] = None
 
-            # Next appt parse
-            next_date, provider = parse_next_appt(row.get('Next Appt Date and Provider'))
+            # Next appt parse (may contain a provider fragment)
+            next_date, next_appt_provider = parse_next_appt(get_mapped_value(row, 'NEXT_APPT_DATE') or row.get('Next Appt Date and Provider') or row.get('Next Appt'))
             out['NEXT_APPT_DATE'] = next_date
-            # Use only the provider parsed from `Next Appt Date and Provider` and format as 'First Last'.
-            # If not present, keep empty string.
-            out['PROVIDER_NAME'] = format_provider_person(provider) or ''
+
+            # Provider selection logic:
+            # Prefer mapped `PROVIDER_DATA` (typically 'Encounter Provider'). If missing,
+            # search a prioritized list of columns: Encounter Provider, Attend/Attending Provider,
+            # PCP fields, Provider Name, generic Provider columns. If still missing, fall back
+            # to the provider parsed from Next Appt.
+            provider_candidates = []
+            # first, mapping-specified provider data (may itself be a list of sources)
+            mapped_pd = get_mapped_value(row, 'PROVIDER_DATA')
+            if mapped_pd and not is_non_name_artifact(mapped_pd):
+                provider_candidates.append(mapped_pd)
+            # common direct columns
+            for col in ('Encounter Provider', 'Attend Prov', 'Attending Provider', 'Provider Name', 'Provider', 'PCP', 'Primary Care Provider'):
+                if col in row and pd.notna(row.get(col)):
+                    val = row.get(col)
+                    if not is_non_name_artifact(val):
+                        provider_candidates.append(val)
+            # finally, next-appt parsed provider
+            if next_appt_provider and not is_non_name_artifact(next_appt_provider):
+                provider_candidates.append(next_appt_provider)
+
+            # pick the first valid candidate as PROVIDER_DATA
+            chosen = None
+            for c in provider_candidates:
+                if c is None:
+                    continue
+                cs = str(c).strip()
+                if cs:
+                    chosen = cs
+                    break
+            out['PROVIDER_DATA'] = chosen
+            # format provider name as 'First Last' using provider data (which is typically 'Last, First')
+            out['PROVIDER_NAME'] = format_provider_person(out.get('PROVIDER_DATA')) or ''
             # keep clinic facility value but strip trailing bracketed numeric IDs like "[2130010001]"
-            raw_cf = row.get('CLINIC FACILITY') or row.get('Clinic Facility') or row.get('Dept/Loc')
+            raw_cf = get_mapped_value(row, 'CLINIC_FACILITY') or row.get('CLINIC FACILITY') or row.get('Clinic Facility') or row.get('Dept/Loc')
             if pd.notna(raw_cf) and str(raw_cf).strip():
                 cf = str(raw_cf).strip()
                 # remove trailing bracketed numeric id
@@ -371,10 +571,34 @@ def main():
                         if syn in tok_key:
                             row_matches.append({'cause': cause_name, 'icd': '', 'token': t, 'is_primary': ('primary' in tok_key), 'is_secondary': ('secondary' in tok_key)})
                             break
-            # determine primary/secondary per rules using severity
+            # determine primary/secondary per rules using mapping priority + severity
             primary = None
             secondary = None
             severity_map = load_severity_map(CAUSE_SEVERITY)
+            # known cause->flag mapping (used for priority)
+            cause_to_flag = {
+                'coronary artery disease': 'CORONARY_ARTERY_DISEASE',
+                'arrhythmia': 'ARRHYTHMIA',
+                'chf (congestive heart failure)': 'CONGESTIVE_HEART_FAILURE',
+                'peripheral vascular disease': 'PERIPHERAL_VASCULAR',
+                'valvular heart disease': 'VALVULAR_HEART',
+                'cerebrovascular accident': 'CERBOVASCULAR_ACCIDENT',
+                'hyperlipidemia': 'HYPERLIPIDEMIA',
+                'angina pectoris': 'ANGINA_PECTORIS',
+                'hypotension': 'HYPOTENSION',
+                'hypertension or pre hypertensive': 'HYPERTENSION',
+                'obesity': 'OBESITY',
+                'type 2 diabetes': 'DIABETES',
+                'chronic kidney': 'CHRONIC_KIDNEY_DISEASE',
+                'copd': 'COPD',
+                'respiratory failure': 'RESPIRATORY_FAILURE',
+                'asthma': 'ASTHMA',
+                'sleep apnea': 'SLEEP_APNEA',
+                'dyspnea': 'DYSPNEA',
+                'emphysema': 'EMPHYSEMA',
+                'bronchiectasis': 'BRONCHIECTASIS',
+                'hypoxemia': 'HYPOXEMIA'
+            }
             # A: token-level explicit labels
             for m in row_matches:
                 if m.get('is_primary'):
@@ -384,18 +608,29 @@ def main():
                 if m.get('is_secondary') and m['cause'] != primary:
                     secondary = m['cause']
                     break
-            # B: if no explicit primary, choose highest-severity matched cause
+            # B: if no explicit primary, choose by mapping-derived priority, then severity, then first-hit
             if not primary and row_matches:
-                uniq = {}
+                uniq_order = []
                 for m in row_matches:
-                        c = str(m.get('cause', '')).strip()
-                        if c not in uniq:
-                            uniq[c] = severity_map.get(c.lower(), 0)
-                sorted_causes = sorted(uniq.items(), key=lambda x: x[1], reverse=True)
-                if sorted_causes:
-                    primary = sorted_causes[0][0]
-                    if len(sorted_causes) > 1:
-                        secondary = sorted_causes[1][0]
+                    c = str(m.get('cause', '')).strip()
+                    if c:
+                        ck = c.lower()
+                        if ck not in uniq_order:
+                            uniq_order.append(ck)
+                # priority index based on cause_to_flag order
+                cause_priority = {k: i for i, k in enumerate(cause_to_flag.keys(), start=1)}
+                ranked = []
+                for idx, c in enumerate(uniq_order):
+                    pr = cause_priority.get(c, 0)
+                    sev = severity_map.get(c, 0) if severity_map else 0
+                    # include original order index as final tiebreaker
+                    ranked.append((c, pr, sev, -idx))
+                if ranked:
+                    # sort by priority, then severity, then first-hit (preserve earlier hits)
+                    ranked.sort(key=lambda x: (x[1], x[2], x[3]), reverse=True)
+                    primary = ranked[0][0]
+                    if len(ranked) > 1:
+                        secondary = ranked[1][0]
             # C: cross-row duplicates fallback for secondary if still empty
             if not secondary and distinct_causes:
                 for c in distinct_causes:
@@ -441,6 +676,11 @@ def main():
                 if cn in cause_to_flag:
                     flag = cause_to_flag[cn]
                     out[flag] = 'YES'
+
+            # Ensure the chosen PRIMARY_DX corresponds to a 'YES' flag if possible
+            primary_flag = match_cause_to_flag(primary, cause_to_flag) if primary else None
+            if primary_flag and primary_flag in out:
+                out[primary_flag] = 'YES'
 
             out_rows.append(out)
             # add timestamp to output filename

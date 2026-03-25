@@ -69,6 +69,6 @@ SYNONYM_TO_CAUSE = {
     'shortness of breath': 'Dyspnea',
     'dyspnea': 'Dyspnea',
     'hypercholesterolemia': 'Hyperlipidemia',
-    'hypertension': 'Hypertension or Pre Hypertensive',
-    'high blood pressure': 'Hypertension or Pre Hypertensive'
+    'hypertension': 'Hypertension',
+    'high blood pressure': 'Hypertension'
 }

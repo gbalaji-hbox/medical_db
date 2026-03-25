@@ -3,7 +3,7 @@
 18,Bronchiectasis,J47.9,true,"",true,2022-12-09 08:01:17.411 +0530,2022-12-09 08:01:17.411 +0530,,O2
 26,Coronary Artery Disease,I25,true,Added on 11th April 2024,true,2024-04-11 13:27:09.000 +0530,2024-04-11 13:27:09.000 +0530,,BP
 27,Arrhythmia,I49,true,Added on 29th April 2024,true,2024-04-29 13:27:09.000 +0530,2024-04-29 13:27:09.000 +0530,,BP
-1,Hypertension or Pre Hypertensive,I10,true,Default,true,2022-03-10 09:41:00.242 +0530,2022-03-10 09:41:00.242 +0530,,BP
+1,Hypertension,I10,true,Default,true,2022-03-10 09:41:00.242 +0530,2022-03-10 09:41:00.242 +0530,,BP
 2,Obesity,E66,true,Default,true,2022-03-10 09:41:00.244 +0530,2022-03-10 09:41:00.244 +0530,,WT
 4,COPD,J44.9,true,Default,true,2022-03-10 09:41:00.247 +0530,2022-03-10 09:41:00.247 +0530,,O2
 25,Sleep Apnea,G47.3,true,Added on 29-03-2024,true,2024-03-29 14:55:00.000 +0530,2024-03-29 14:55:00.000 +0530,,WT
