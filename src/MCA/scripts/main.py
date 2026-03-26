@@ -14,6 +14,14 @@ import sys
 from pathlib import Path
 from datetime import datetime
 
+# Import Spire.XLS for Excel conversion
+try:
+    from spire.xls import *
+except ImportError:
+    print("ERROR: Spire.XLS is required but not installed.")
+    print("Install it with: pip install Spire.XLS")
+    sys.exit(1)
+
 # Add the scripts directory to Python path for imports
 script_dir = Path(__file__).parent
 sys.path.insert(0, str(script_dir))
@@ -31,6 +39,64 @@ from merger import (
 from convert_to_consolidate import TemplateFormatter
 
 
+def convert_xls_to_xlsx(input_path, output_path=None):
+    """
+    Convert XLS file to XLSX format using Spire.XLS
+
+    Args:
+        input_path (str): Path to input XLS file
+        output_path (str, optional): Path for output XLSX file. If None, replaces .xls with .xlsx
+
+    Returns:
+        str: Path to the converted XLSX file
+    """
+    if output_path is None:
+        output_path = str(Path(input_path).with_suffix('.xlsx'))
+
+    try:
+        print(f"Converting {input_path} to {output_path}...")
+
+        # Create workbook instance
+        workbook = Workbook()
+
+        # Load the XLS file
+        workbook.LoadFromFile(input_path)
+
+        # Save as XLSX
+        workbook.SaveToFile(output_path, ExcelVersion.Version2016)
+
+        # Dispose of the workbook
+        workbook.Dispose()
+
+        print(f"✓ Conversion completed: {output_path}")
+        return output_path
+
+    except Exception as e:
+        print(f"ERROR: Failed to convert {input_path}: {e}")
+        raise
+
+
+def ensure_xlsx_format(file_path):
+    """
+    Ensure a file is in XLSX format, converting if necessary
+
+    Args:
+        file_path (str or Path): Path to the file
+
+    Returns:
+        str: Path to the XLSX file (original if already XLSX, converted if XLS)
+    """
+    file_path = Path(file_path)
+
+    if file_path.suffix.lower() == '.xlsx':
+        return str(file_path)
+    elif file_path.suffix.lower() == '.xls':
+        xlsx_path = file_path.with_suffix('.xlsx')
+        return convert_xls_to_xlsx(str(file_path), str(xlsx_path))
+    else:
+        raise ValueError(f"Unsupported file format: {file_path.suffix}. Expected .xls or .xlsx")
+
+
 def main():
     """Main execution function for the complete data processing pipeline."""
 
@@ -40,12 +106,24 @@ def main():
     base_dir = Path(__file__).parent.parent  # This gets src/MCA directory
     cleaned_dir = base_dir / "cleaned"
 
-    # Input files
-    insurance_excel = base_dir / "Patients by Insurance.xlsx"
-    visits_excel = base_dir / "Patients With Visits By Insurance.xlsx"
-    patients_excel = base_dir / "Patients by Diagnosis.xlsx"
-    patient_list_excel = base_dir / "patient-list.xlsx"
-    service_by_provider_excel = base_dir / "Services by Provider Summary.xlsx"
+    # Input files - ensure they are in XLSX format
+    insurance_excel = ensure_xlsx_format(base_dir / "Patients by Insurance.xlsx")
+    visits_excel = ensure_xlsx_format(base_dir / "Patients With Visits By Insurance.xlsx")
+    patients_excel = ensure_xlsx_format(base_dir / "Patients by Diagnosis.xlsx")
+
+    # Handle patient-list file (check for .xls first, then .xlsx)
+    patient_list_xls = base_dir / "patient-list.xls"
+    patient_list_xlsx = base_dir / "patient-list.xlsx"
+    if patient_list_xls.exists():
+        patient_list_excel = ensure_xlsx_format(patient_list_xls)
+    elif patient_list_xlsx.exists():
+        patient_list_excel = str(patient_list_xlsx)
+    else:
+        patient_list_excel = str(patient_list_xlsx)  # Will be caught by file existence check
+
+    # Handle service by provider file (may not exist)
+    service_provider_path = base_dir / "Services by Provider Summary.xlsx"
+    service_by_provider_excel = ensure_xlsx_format(service_provider_path) if service_provider_path.exists() else None
 
     # Intermediate output files
     cleaned_patients_csv = cleaned_dir / "1_patients_by_diagnosis.csv"
@@ -60,15 +138,23 @@ def main():
 
     # Check if input files exist
     missing_files = []
-    for file_path in [insurance_excel, visits_excel, patients_excel, patient_list_excel]:
-        if not file_path.exists():
-            missing_files.append(str(file_path))
+    required_files = [
+        (insurance_excel, "Patients by Insurance.xlsx"),
+        (visits_excel, "Patients With Visits By Insurance.xlsx"),
+        (patients_excel, "Patients by Diagnosis.xlsx"),
+        (patient_list_excel, "patient-list.xls or patient-list.xlsx")
+    ]
+
+    for file_path, original_name in required_files:
+        if not Path(file_path).exists():
+            missing_files.append(original_name)
 
     if missing_files:
         print("ERROR: Missing required input files:")
         for file in missing_files:
             print(f"  - {file}")
         print("\nPlease ensure all Excel files are present in the src/MCA/ directory.")
+        print("Note: patient-list.xls files will be automatically converted to XLSX format.")
         sys.exit(1)
 
     try:
