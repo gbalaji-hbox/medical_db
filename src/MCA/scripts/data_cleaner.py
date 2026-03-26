@@ -133,7 +133,7 @@ class InsuranceDataCleaner:
         # Read Excel data starting from row 20 (header at index 19)
         rows = ExcelReader.read_excel_rows(self.input_path, start_row=20)
 
-        records = []
+        patients = {}
         current_payer = ""
 
         for row in rows:
@@ -158,43 +158,57 @@ class InsuranceDataCleaner:
             # Parse phone numbers
             home_number, mobile_number = self.parse_phone(pnum)
 
-            # Determine payer type from Account Name
-            payer_type, _ = self.extract_payer_info(acc)
-
             # Skip rows that don't have patient data
-            if not pname:
+            if not pname or not pid:
                 continue
 
-            # Initialize payer fields
-            payer_name_p = payer_name_s = payer_name_t = ""
-            member_id_p = member_id_s = member_id_t = ""
+            # Initialize patient record if not exists
+            if pid not in patients:
+                patients[pid] = {
+                    "patient_name": self.text_cleaner.clean_text(pname),
+                    "address": self.text_cleaner.clean_text(addr),
+                    "home_number": home_number,
+                    "mobile_number": mobile_number,
+                    "sex": sex,
+                    "dob": dob,
+                    "payers": []
+                }
 
-            # Set payer fields based on type
-            if payer_type == "P":
-                payer_name_p = current_payer
-                member_id_p = mid
-            elif payer_type == "S":
-                payer_name_s = current_payer
-                member_id_s = mid
-            elif payer_type == "T":
-                payer_name_t = current_payer
-                member_id_t = mid
+            # Add payer info
+            patients[pid]["payers"].append((current_payer, mid))
 
-            records.append({
+        # Now create records, assigning payers in order
+        records = []
+        for pid, data in patients.items():
+            record = {
                 "patient_id": pid,
-                "patient_name": self.text_cleaner.clean_text(pname),
-                "address": self.text_cleaner.clean_text(addr),
-                "home_number": home_number,
-                "mobile_number": mobile_number,
-                "sex": sex,
-                "dob": dob,
-                "payer_name_p": payer_name_p,
-                "member_id_p": member_id_p,
-                "payer_name_s": payer_name_s,
-                "member_id_s": member_id_s,
-                "payer_name_t": payer_name_t,
-                "member_id_t": member_id_t
-            })
+                "patient_name": data["patient_name"],
+                "address": data["address"],
+                "home_number": data["home_number"],
+                "mobile_number": data["mobile_number"],
+                "sex": data["sex"],
+                "dob": data["dob"],
+                "payer_name_p": "",
+                "member_id_p": "",
+                "payer_name_s": "",
+                "member_id_s": "",
+                "payer_name_t": "",
+                "member_id_t": ""
+            }
+
+            # Assign payers
+            for i, (payer_name, member_id) in enumerate(data["payers"][:3]):  # Up to 3
+                if i == 0:
+                    record["payer_name_p"] = payer_name
+                    record["member_id_p"] = member_id
+                elif i == 1:
+                    record["payer_name_s"] = payer_name
+                    record["member_id_s"] = member_id
+                elif i == 2:
+                    record["payer_name_t"] = payer_name
+                    record["member_id_t"] = member_id
+
+            records.append(record)
 
         # Write to CSV
         self._write_csv(records)
@@ -262,7 +276,7 @@ class VisitsDataCleaner:
         # Read Excel data starting from row 14 (header at index 13)
         rows = ExcelReader.read_excel_rows(self.input_path, start_row=14)
 
-        records = []
+        patients = {}
         current_payer = ""
 
         for row in rows:
@@ -289,24 +303,70 @@ class VisitsDataCleaner:
             phone_number, phone_type_parsed = self.parse_phone_with_type(ptype)
 
             # Skip rows that don't have patient data
-            if not patient_name:
+            if not patient_name or not patient_id:
                 continue
 
             # Skip patients without insurance
             if current_payer == "Patients Without Insurance":
                 continue
 
-            records.append({
-                "patient_id": patient_id,
-                "patient_name": self.text_cleaner.clean_text(patient_name),
-                "member_id": mid,
-                "address": self.text_cleaner.clean_text(addr),
-                "phone_number": phone_number,
-                "phone_type": phone_type_parsed,
-                "last_visit": lvisit,
-                "visit_count": vcount,
-                "payer": current_payer
-            })
+            # Initialize patient record if not exists
+            if patient_id not in patients:
+                patients[patient_id] = {
+                    "patient_name": self.text_cleaner.clean_text(patient_name),
+                    "address": self.text_cleaner.clean_text(addr),
+                    "phone_number": phone_number,
+                    "phone_type": phone_type_parsed,
+                    "last_visit": lvisit,
+                    "visit_count": vcount,
+                    "payers": []
+                }
+
+            # Add payer info
+            patients[patient_id]["payers"].append((current_payer, mid))
+
+            # Update visit info if higher count or later visit
+            try:
+                current_count = int(vcount) if vcount.isdigit() else 0
+                existing_count = int(patients[patient_id]["visit_count"]) if patients[patient_id]["visit_count"].isdigit() else 0
+                if current_count > existing_count:
+                    patients[patient_id]["visit_count"] = vcount
+                    patients[patient_id]["last_visit"] = lvisit
+            except ValueError:
+                pass
+
+        # Now create records, assigning payers in order
+        records = []
+        for pid, data in patients.items():
+            record = {
+                "patient_id": pid,
+                "patient_name": data["patient_name"],
+                "address": data["address"],
+                "phone_number": data["phone_number"],
+                "phone_type": data["phone_type"],
+                "last_visit": data["last_visit"],
+                "visit_count": data["visit_count"],
+                "payer_name_p": "",
+                "member_id_p": "",
+                "payer_name_s": "",
+                "member_id_s": "",
+                "payer_name_t": "",
+                "member_id_t": ""
+            }
+
+            # Assign payers
+            for i, (payer_name, member_id) in enumerate(data["payers"][:3]):  # Up to 3
+                if i == 0:
+                    record["payer_name_p"] = payer_name
+                    record["member_id_p"] = member_id
+                elif i == 1:
+                    record["payer_name_s"] = payer_name
+                    record["member_id_s"] = member_id
+                elif i == 2:
+                    record["payer_name_t"] = payer_name
+                    record["member_id_t"] = member_id
+
+            records.append(record)
 
         # Write to CSV
         self._write_csv(records)
@@ -317,8 +377,9 @@ class VisitsDataCleaner:
         os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
 
         fieldnames = [
-            "patient_id", "patient_name", "member_id", "address", "phone_number",
-            "phone_type", "last_visit", "visit_count", "payer"
+            "patient_id", "patient_name", "address", "phone_number",
+            "phone_type", "last_visit", "visit_count", "payer_name_p", "member_id_p",
+            "payer_name_s", "member_id_s", "payer_name_t", "member_id_t"
         ]
 
         with open(self.output_path, 'w', newline='', encoding='utf-8-sig') as csvfile:
@@ -636,12 +697,146 @@ class PatientListCleaner:
 
     def _write_csv(self, records: List[Dict]) -> None:
         """Write records to CSV file."""
+    def _write_csv(self, records: List[Dict]) -> None:
+        """Write records to CSV file."""
         os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
 
         fieldnames = [
             "patient_id", "patient_name", "address", "city", "state", "zip", "dob",
             "emergency_contact", "emergency_contact_number"
         ]
+
+        with open(self.output_path, 'w', newline='', encoding='utf-8-sig') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(records)
+
+
+class AppointmentsDataCleaner:
+    """Class for cleaning appointments data from Excel files."""
+
+    def __init__(self, input_path: str, output_path: str):
+        self.input_path = input_path
+        self.output_path = output_path
+        self.text_cleaner = TextCleaner()
+
+    def parse_patient_info(self, patient_raw: str) -> Tuple[str, str]:
+        """Parse patient name and phone from format like 'Abbas, Alan/(313)674-7171'."""
+        if not patient_raw or "/" not in patient_raw:
+            return "", ""
+        
+        parts = patient_raw.split("/", 1)
+        if len(parts) == 2:
+            name = parts[0].strip()
+            phone = self.text_cleaner.normalize_phone(parts[1].strip())
+            return name, phone
+        return patient_raw.strip(), ""
+
+    def parse_datetime(self, datetime_raw: str) -> str:
+        """Parse and normalize date/time."""
+        if not datetime_raw:
+            return ""
+        # Clean up and return as is for now
+        return datetime_raw.strip()
+
+    def parse_dob(self, dob_raw: str) -> str:
+        """Parse and normalize DOB."""
+        if not dob_raw:
+            return ""
+        # Remove time part if present
+        dob = dob_raw.split()[0] if " " in dob_raw else dob_raw
+        # Convert YYYY-MM-DD to MM/DD/YYYY
+        if "-" in dob:
+            parts = dob.split("-")
+            if len(parts) == 3:
+                return f"{parts[1]}/{parts[2]}/{parts[0]}"
+        return dob.strip()
+
+    def clean_data(self) -> int:
+        """Clean appointments data and return number of records processed."""
+        from datetime import datetime
+        
+        # Read Excel data starting from row 13 (header at index 12)
+        rows = ExcelReader.read_excel_rows(self.input_path, start_row=13)
+
+        current_date = datetime.now().date()
+        patient_appointments = {}  # key: (name_key, dob_key), value: earliest future datetime
+
+        for row in rows:
+            if len(row) < 3:  # Skip incomplete rows
+                continue
+
+            # Extract fields by column index
+            datetime_raw = row[0].strip() if len(row) > 0 else ""
+            patient_raw = row[1].strip() if len(row) > 1 else ""
+            dob_raw = row[2].strip() if len(row) > 2 else ""
+
+            # Skip rows that don't have appointment data (like reason rows)
+            if not datetime_raw or not patient_raw:
+                continue
+
+            # Skip if this looks like a reason row
+            if datetime_raw.lower().startswith("reason:"):
+                continue
+
+            # Parse patient info
+            patient_name, phone = self.parse_patient_info(patient_raw)
+
+            # Parse datetime and DOB
+            datetime_clean = self.parse_datetime(datetime_raw)
+            dob_clean = self.parse_dob(dob_raw)
+
+            # Skip if no valid patient name
+            if not patient_name or not datetime_clean:
+                continue
+
+            # Parse appointment date
+            try:
+                # Try to parse the datetime - it might be in MM/DD/YYYY HH:MM AM/PM format
+                appt_datetime = datetime.strptime(datetime_clean, "%m/%d/%Y %I:%M %p")
+                appt_date = appt_datetime.date()
+            except ValueError:
+                try:
+                    # Try just date format
+                    appt_date = datetime.strptime(datetime_clean.split()[0], "%m/%d/%Y").date()
+                except ValueError:
+                    # Skip if can't parse date
+                    continue
+
+            # Skip past appointments
+            if appt_date < current_date:
+                continue
+
+            # Create lookup key
+            name_key = self.text_cleaner.normalize_name_key(patient_name)
+            dob_key = self.text_cleaner.normalize_date_key(dob_clean)
+            lookup_key = (name_key, dob_key)
+
+            # Keep the earliest future appointment for each patient
+            if lookup_key not in patient_appointments or appt_datetime < patient_appointments[lookup_key][0]:
+                patient_appointments[lookup_key] = (appt_datetime, patient_name, phone, dob_clean, datetime_clean)
+
+        # Convert to records
+        records = []
+        for (name_key, dob_key), (appt_datetime, patient_name, phone, dob_clean, datetime_clean) in patient_appointments.items():
+            records.append({
+                "patient_name": self.text_cleaner.clean_text(patient_name),
+                "phone": phone,
+                "dob": dob_clean,
+                "datetime": datetime_clean
+            })
+
+        # Write to CSV
+        self._write_csv(records)
+        return len(records)
+
+    def _write_csv(self, records: List[Dict]) -> None:
+        """Write records to CSV file."""
+        output_dir = os.path.dirname(self.output_path)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
+
+        fieldnames = ["patient_name", "phone", "dob", "datetime"]
 
         with open(self.output_path, 'w', newline='', encoding='utf-8-sig') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)

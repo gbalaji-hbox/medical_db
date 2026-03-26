@@ -333,6 +333,7 @@ class TemplateFormatter:
             # Parse dates for proper Excel date formatting
             dob_date = self._parse_date(str(row.get('dob', '')))
             last_seen_date = self._parse_date(str(row.get('last_visit', '')))
+            next_appt_date = self._parse_date(str(row.get('next_appointment', '')))
 
             # Build formatted record
             record = {
@@ -360,14 +361,14 @@ class TemplateFormatter:
                 'EMERGENCY CONTACT HOME PHONE': row.get('emergency_contact_number', ''),
                 'EMERGENCY CONTACT MOBILE PHONE': '',  # Not available
                 'MEDICARE ID': '',  # Not available
-                'PRIMARY INSURANCE': row.get('payer', ''),
-                'PRIMARY ID': row.get('member_id', ''),
+                'PRIMARY INSURANCE': row.get('payer_name_p', ''),
+                'PRIMARY ID': row.get('member_id_p', ''),
                 'PRIMARY GROUP': '',  # Leave blank as requested
-                'SECONDARY INSURANCE': '',  # Not available
-                'SECONDARY ID': '',  # Not available
+                'SECONDARY INSURANCE': row.get('payer_name_s', ''),
+                'SECONDARY ID': row.get('member_id_s', ''),
                 'SECONDARY GROUP': '',  # Leave blank as requested
-                'TERITARY INSURANCE': '',  # Not available
-                'TERITARY ID': '',  # Not available
+                'TERITARY INSURANCE': row.get('payer_name_t', ''),
+                'TERITARY ID': row.get('member_id_t', ''),
                 'TERITARY GROUP': '',  # Leave blank as requested
                 'INSURANCE TYPE': insurance_type,
                 'CO-PAY': '',  # Not available
@@ -399,7 +400,7 @@ class TemplateFormatter:
                 'PRIMARY ICD': primary_icd,
                 'SECONDARY ICD': secondary_icd,
                 'LAST SEEN DATE': last_seen_date,
-                'NEXT APPT': '',  # Not available
+                'NEXT APPT': next_appt_date,
                 'PROVIDER DATA': row.get('provider_data', ''),
                 'PROVIDER NAME': provider_name,
                 'CLINIC FACILITY': 'Midwest Cardiology',  # Default clinic

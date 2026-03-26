@@ -67,13 +67,25 @@ class InsuranceVisitsMerger:
                 visits_home = phone_num if phone_type == 'home' else ''
                 visits_mobile = phone_num if phone_type == 'cell' else ''
 
+                # Determine main payer for visits (same logic as insurance)
+                visits_main_payer = record.get('payer_name_s', '').strip()
+                visits_main_member_id = record.get('member_id_s', '').strip()
+
+                if not visits_main_payer:
+                    visits_main_payer = record.get('payer_name_p', '').strip()
+                    visits_main_member_id = record.get('member_id_p', '').strip()
+
+                if not visits_main_payer:
+                    visits_main_payer = record.get('payer_name_t', '').strip()
+                    visits_main_member_id = record.get('member_id_t', '').strip()
+
                 visits_dict[patient_id] = {
                     'home_number': visits_home,
                     'mobile_number': visits_mobile,
                     'last_visit': record.get('last_visit', ''),
                     'visit_count': record.get('visit_count', ''),
-                    'visits_member_id': record.get('member_id', ''),
-                    'visits_payer': record.get('payer', '')
+                    'visits_member_id': visits_main_member_id,
+                    'visits_payer': visits_main_payer
                 }
 
         # Process insurance data and add visit information
@@ -124,6 +136,12 @@ class InsuranceVisitsMerger:
                 "dob": record.get('dob', ''),
                 "member_id": final_member_id,
                 "payer": main_payer,
+                "payer_name_p": record.get('payer_name_p', ''),
+                "member_id_p": record.get('member_id_p', ''),
+                "payer_name_s": record.get('payer_name_s', ''),
+                "member_id_s": record.get('member_id_s', ''),
+                "payer_name_t": record.get('payer_name_t', ''),
+                "member_id_t": record.get('member_id_t', ''),
                 "last_visit": visit_data.get('last_visit', ''),
                 "visit_count": visit_data.get('visit_count', '')
             })
@@ -143,6 +161,12 @@ class InsuranceVisitsMerger:
                     "dob": '',  # Not available
                     "member_id": visit_data.get('visits_member_id', ''),
                     "payer": visit_data.get('visits_payer', ''),
+                    "payer_name_p": '',  # Not available for visits-only
+                    "member_id_p": '',
+                    "payer_name_s": '',  # Not available for visits-only
+                    "member_id_s": '',
+                    "payer_name_t": '',  # Not available for visits-only
+                    "member_id_t": '',
                     "last_visit": visit_data.get('last_visit', ''),
                     "visit_count": visit_data.get('visit_count', '')
                 })
@@ -150,7 +174,8 @@ class InsuranceVisitsMerger:
         # Define output columns
         fieldnames = [
             "patient_id", "patient_name", "address", "home_number", "mobile_number",
-            "sex", "dob", "member_id", "payer", "last_visit", "visit_count"
+            "sex", "dob", "member_id", "payer", "payer_name_p", "member_id_p",
+            "payer_name_s", "member_id_s", "payer_name_t", "member_id_t", "last_visit", "visit_count"
         ]
 
         # Write merged data
@@ -161,11 +186,12 @@ class InsuranceVisitsMerger:
 class PatientsInsuranceMerger:
     """Class for merging patients demographics with insurance data."""
 
-    def __init__(self, patients_path: str, insurance_path: str, patient_list_path: str, output_path: str):
+    def __init__(self, patients_path: str, insurance_path: str, patient_list_path: str, output_path: str, appointments_path: str = None):
         self.patients_path = patients_path
         self.insurance_path = insurance_path
         self.patient_list_path = patient_list_path
         self.output_path = output_path
+        self.appointments_path = appointments_path
 
     def merge_data(self) -> int:
         """Merge patients, insurance, and patient list data, return number of records."""
@@ -183,6 +209,18 @@ class PatientsInsuranceMerger:
         for record in insurance_records:
             patient_id = record.get('patient_id', '').strip()
             if patient_id:
+                # Determine main payer (same logic as before)
+                main_payer = record.get('payer_name_s', '').strip()
+                main_member_id = record.get('member_id_s', '').strip()
+
+                if not main_payer:
+                    main_payer = record.get('payer_name_p', '').strip()
+                    main_member_id = record.get('member_id_p', '').strip()
+
+                if not main_payer:
+                    main_payer = record.get('payer_name_t', '').strip()
+                    main_member_id = record.get('member_id_t', '').strip()
+
                 insurance_dict[patient_id] = {
                     'patient_name': record.get('patient_name', ''),
                     'address': record.get('address', ''),
@@ -190,10 +228,16 @@ class PatientsInsuranceMerger:
                     'mobile_number': record.get('mobile_number', ''),
                     'sex': record.get('sex', ''),
                     'dob': record.get('dob', ''),
-                    'member_id': record.get('member_id', ''),
-                    'payer': record.get('payer', ''),
+                    'member_id': main_member_id,
+                    'payer': main_payer,
                     'last_visit': record.get('last_visit', ''),
-                    'visit_count': record.get('visit_count', '')
+                    'visit_count': record.get('visit_count', ''),
+                    'payer_name_p': record.get('payer_name_p', ''),
+                    'member_id_p': record.get('member_id_p', ''),
+                    'payer_name_s': record.get('payer_name_s', ''),
+                    'member_id_s': record.get('member_id_s', ''),
+                    'payer_name_t': record.get('payer_name_t', ''),
+                    'member_id_t': record.get('member_id_t', '')
                 }
 
         # Create lookup dictionary for patient list data (keyed by patient_id only)
@@ -212,6 +256,30 @@ class PatientsInsuranceMerger:
                     'emergency_contact': record.get('emergency_contact', ''),
                     'emergency_contact_number': record.get('emergency_contact_number', '')
                 }
+
+        # Create lookup dictionary for appointments data (keyed by normalized patient name + dob)
+        appointments_dict = {}
+        if self.appointments_path and os.path.exists(self.appointments_path):
+            appointments_records = CSVReader.read_csv(self.appointments_path)
+            print(f"Appointments file: {len(appointments_records)} records")
+            
+            for record in appointments_records:
+                patient_name = record.get('patient_name', '').strip()
+                dob = record.get('dob', '').strip()
+                phone = record.get('phone', '').strip()
+                datetime_val = record.get('datetime', '').strip()
+                
+                if patient_name and dob:
+                    # Create a key for matching: normalized name + dob
+                    from data_cleaner import TextCleaner
+                    text_cleaner = TextCleaner()
+                    name_key = text_cleaner.normalize_name_key(patient_name)
+                    dob_key = text_cleaner.normalize_date_key(dob)
+                    lookup_key = f"{name_key}|{dob_key}"
+                    
+                    # Store the earliest appointment datetime
+                    if lookup_key not in appointments_dict or datetime_val < appointments_dict[lookup_key]:
+                        appointments_dict[lookup_key] = datetime_val
 
         # Merge data with intelligent deduplication - keep all diagnoses per patient
         from collections import defaultdict
@@ -235,6 +303,18 @@ class PatientsInsuranceMerger:
             
             # Use the first record as the base
             base_record = patient_records[0]
+            
+            # Get next appointment by matching patient name + dob
+            next_appointment = ""
+            if appointments_dict:
+                from data_cleaner import TextCleaner
+                text_cleaner = TextCleaner()
+                patient_name = insurance_data.get('patient_name', base_record.get('name', ''))
+                dob = insurance_data.get('dob', base_record.get('dob', ''))
+                name_key = text_cleaner.normalize_name_key(patient_name)
+                dob_key = text_cleaner.normalize_date_key(dob)
+                lookup_key = f"{name_key}|{dob_key}"
+                next_appointment = appointments_dict.get(lookup_key, "")
             
             # Collect all diagnoses and ICD codes for this patient
             all_diagnoses = []
@@ -265,7 +345,14 @@ class PatientsInsuranceMerger:
                 "all_icds": "|".join(all_icds),  # Store all ICDs for comorbidity processing
                 "member_id": insurance_data.get('member_id', ''),  # From insurance only
                 "payer": insurance_data.get('payer', ''),  # From insurance only
+                "payer_name_p": insurance_data.get('payer_name_p', ''),
+                "member_id_p": insurance_data.get('member_id_p', ''),
+                "payer_name_s": insurance_data.get('payer_name_s', ''),
+                "member_id_s": insurance_data.get('member_id_s', ''),
+                "payer_name_t": insurance_data.get('payer_name_t', ''),
+                "member_id_t": insurance_data.get('member_id_t', ''),
                 "last_visit": insurance_data.get('last_visit', base_record.get('last_visit_date', '')),  # Prefer insurance last_visit
+                "next_appointment": next_appointment,
                 "provider_data": base_record.get('provider_data', '')
             })
 
@@ -273,7 +360,8 @@ class PatientsInsuranceMerger:
         fieldnames = [
             "patient_id", "patient_name", "address", "city", "state", "zip", "home_number", "mobile_number",
             "sex", "dob", "email", "emergency_contact", "emergency_contact_number",
-            "all_diagnoses", "all_icds", "member_id", "payer", "last_visit", "provider_data"
+            "all_diagnoses", "all_icds", "member_id", "payer", "payer_name_p", "member_id_p",
+            "payer_name_s", "member_id_s", "payer_name_t", "member_id_t", "last_visit", "next_appointment", "provider_data"
         ]
 
         # Write final merged data

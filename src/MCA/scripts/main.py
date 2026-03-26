@@ -30,7 +30,8 @@ from data_cleaner import (
     InsuranceDataCleaner,
     VisitsDataCleaner,
     PatientsDataCleaner,
-    PatientListCleaner
+    PatientListCleaner,
+    AppointmentsDataCleaner
 )
 from merger import (
     InsuranceVisitsMerger,
@@ -125,12 +126,16 @@ def main():
     service_provider_path = base_dir / "Services by Provider Summary.xlsx"
     service_by_provider_excel = ensure_xlsx_format(service_provider_path) if service_provider_path.exists() else None
 
+    # Handle appointments file
+    appointments_excel = ensure_xlsx_format(base_dir / "Appointment Report.xlsx")
+
     # Intermediate output files
     cleaned_patients_csv = cleaned_dir / "1_patients_by_diagnosis.csv"
     cleaned_insurance_csv = cleaned_dir / "2_patients_by_insurance.csv"
     cleaned_visits_csv = cleaned_dir / "3_patients_with_visits_by_insurance.csv"
     cleaned_patient_list_csv = cleaned_dir / "4_patient_list.csv"
-    merged_insurance_visits_csv = cleaned_dir / "5_combined_insurance_visits.csv"
+    cleaned_appointments_csv = cleaned_dir / "5_appointments.csv"
+    merged_insurance_visits_csv = cleaned_dir / "6_combined_insurance_visits.csv"
 
     # Final output file with timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -142,7 +147,8 @@ def main():
         (insurance_excel, "Patients by Insurance.xlsx"),
         (visits_excel, "Patients With Visits By Insurance.xlsx"),
         (patients_excel, "Patients by Diagnosis.xlsx"),
-        (patient_list_excel, "patient-list.xls or patient-list.xlsx")
+        (patient_list_excel, "patient-list.xls or patient-list.xlsx"),
+        (appointments_excel, "Appointment Report.xlsx")
     ]
 
     for file_path, original_name in required_files:
@@ -204,13 +210,23 @@ def main():
         patient_list_count = patient_list_cleaner.clean_data()
         print(f"✓ Patient list data cleaned: {patient_list_count} records\n")
 
-        # Step 5: Combine all data (patients + insurance/visits + patient list)
-        print("Step 5: Combining all data...")
+        # Step 5: Clean appointments data
+        print("Step 5: Cleaning appointments data...")
+        appointments_cleaner = AppointmentsDataCleaner(
+            str(appointments_excel),
+            str(cleaned_appointments_csv)
+        )
+        appointments_count = appointments_cleaner.clean_data()
+        print(f"✓ Appointments data cleaned: {appointments_count} records\n")
+
+        # Step 6: Combine all data (patients + insurance/visits + patient list + appointments)
+        print("Step 6: Combining all data...")
         final_merger = PatientsInsuranceMerger(
             str(cleaned_patients_csv),
             str(merged_insurance_visits_csv),
             str(cleaned_patient_list_csv),
-            str(final_output_csv)
+            str(final_output_csv),
+            str(cleaned_appointments_csv)
         )
         final_count = final_merger.merge_data()
         print(f"✓ All data combined: {final_count} records\n")
@@ -232,6 +248,7 @@ def main():
             cleaned_visits_csv,
             cleaned_patients_csv,
             cleaned_patient_list_csv,
+            cleaned_appointments_csv,
             merged_insurance_visits_csv
             # Note: Keeping final_output_csv for reference
         ]
