@@ -163,7 +163,7 @@ def main():
         patients_cleaner = PatientsDataCleaner(
             str(patients_excel),
             str(cleaned_patients_csv),
-            str(service_by_provider_excel) if service_by_provider_excel.exists() else None
+            str(service_by_provider_excel) if service_by_provider_excel else None
         )
         patients_count = patients_cleaner.clean_data()
         print(f"✓ Patients by diagnosis data cleaned: {patients_count} records\n")

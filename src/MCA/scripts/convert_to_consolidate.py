@@ -402,7 +402,7 @@ class TemplateFormatter:
                 'NEXT APPT': '',  # Not available
                 'PROVIDER DATA': row.get('provider_data', ''),
                 'PROVIDER NAME': provider_name,
-                'CLINIC FACILITY': '',  # Not available
+                'CLINIC FACILITY': 'Midwest Cardiology',  # Default clinic
                 'PRIMARY CARE PROVIDER': provider_name,  # Same as provider name
                 'MEDICATIONS': '',  # Not available
                 'ENCOUNTER NOTES': ''  # Not available
