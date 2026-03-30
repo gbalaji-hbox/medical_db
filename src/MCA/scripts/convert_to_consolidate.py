@@ -371,7 +371,7 @@ class TemplateFormatter:
                 'TERITARY ID': row.get('member_id_t', ''),
                 'TERITARY GROUP': '',  # Leave blank as requested
                 'INSURANCE TYPE': insurance_type,
-                'CO-PAY': '',  # Not available
+                'CO-PAY': row.get('copay', 0.0),
                 # Comorbidities (set YES if matched, NO if not)
                 'CORONARY ARTERY DISEASE': comorbidities.get('CORONARY ARTERY DISEASE', 'NO'),
                 'ARRHYTHMIA': comorbidities.get('ARRHYTHMIA', 'NO'),

@@ -367,3 +367,65 @@ class PatientsInsuranceMerger:
         # Write final merged data
         CSVWriter.write_csv(self.output_path, merged_records, fieldnames)
         return len(merged_records)
+
+
+class CopayMerger:
+    """Class for merging copay data with patient list data."""
+
+    def __init__(self, patient_list_path: str, copay_path: str, output_path: str):
+        self.patient_list_path = patient_list_path
+        self.copay_path = copay_path
+        self.output_path = output_path
+
+    def merge_data(self) -> int:
+        """Merge patient list with copay data, return number of records."""
+        # Read input files
+        patient_records = CSVReader.read_csv(self.patient_list_path)
+        copay_records = CSVReader.read_csv(self.copay_path)
+
+        print(f"Patient list file: {len(patient_records)} records")
+        print(f" Copay file: {len(copay_records)} records")
+
+        # Create lookup dictionary for copay data (keyed by normalized patient name + primary insurance)
+        from data_cleaner import TextCleaner
+        text_cleaner = TextCleaner()
+        copay_dict = {}
+
+        for record in copay_records:
+            patient_name = record.get('patient_name', '').strip()
+            primary_insurance = record.get('primary_insurance', '').strip()
+            actual_copay = record.get('actual_copay', 0.0)
+
+            if patient_name and primary_insurance:
+                # Create a key for matching: normalized name + normalized insurance
+                name_key = text_cleaner.normalize_name_key(patient_name)
+                insurance_key = text_cleaner.normalize_name_key(primary_insurance)
+                lookup_key = f"{name_key}|{insurance_key}"
+
+                copay_dict[lookup_key] = actual_copay
+
+        # Merge copay data into patient records
+        merged_records = []
+
+        for record in patient_records:
+            patient_name = record.get('patient_name', '').strip()
+            primary_insurance = record.get('payer', '').strip()  # Assuming 'payer' is the primary insurance field
+
+            # Try to find matching copay
+            copay_amount = 0.0
+            if patient_name and primary_insurance:
+                name_key = text_cleaner.normalize_name_key(patient_name)
+                insurance_key = text_cleaner.normalize_name_key(primary_insurance)
+                lookup_key = f"{name_key}|{insurance_key}"
+                copay_amount = copay_dict.get(lookup_key, 0.0)
+
+            # Add copay to the record
+            record['copay'] = copay_amount
+            merged_records.append(record)
+
+        # Define output columns (add copay to existing fieldnames)
+        fieldnames = list(merged_records[0].keys()) if merged_records else []
+
+        # Write merged data
+        CSVWriter.write_csv(self.output_path, merged_records, fieldnames)
+        return len(merged_records)

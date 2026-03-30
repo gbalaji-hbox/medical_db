@@ -3,8 +3,10 @@
 Medical Database Processing Pipeline
 
 Single execution script that processes all medical data files using modular classes.
-Combines insurance data, visits data, and patient demographics into a unified dataset.
-Automatically cleans up intermediate files, keeping only the final output.
+Combines insurance data, visits data, patient diagnoses, appointments, and copay information
+into a unified dataset. Automatically cleans up intermediate files, keeping only the final output.
+
+Note: Demographic schedule processing is handled separately by run_demographic.py
 
 Usage: python main.py
 """
@@ -31,11 +33,13 @@ from data_cleaner import (
     VisitsDataCleaner,
     PatientsDataCleaner,
     PatientListCleaner,
-    AppointmentsDataCleaner
+    AppointmentsDataCleaner,
+    CopayDataCleaner
 )
 from merger import (
     InsuranceVisitsMerger,
-    PatientsInsuranceMerger
+    PatientsInsuranceMerger,
+    CopayMerger
 )
 from convert_to_consolidate import TemplateFormatter
 
@@ -129,6 +133,9 @@ def main():
     # Handle appointments file
     appointments_excel = ensure_xlsx_format(base_dir / "Appointment Report.xlsx")
 
+    # Handle copay file
+    copay_excel = ensure_xlsx_format(base_dir / "Copay Report.xlsx")
+
     # Intermediate output files
     cleaned_patients_csv = cleaned_dir / "1_patients_by_diagnosis.csv"
     cleaned_insurance_csv = cleaned_dir / "2_patients_by_insurance.csv"
@@ -136,6 +143,7 @@ def main():
     cleaned_patient_list_csv = cleaned_dir / "4_patient_list.csv"
     cleaned_appointments_csv = cleaned_dir / "5_appointments.csv"
     merged_insurance_visits_csv = cleaned_dir / "6_combined_insurance_visits.csv"
+    cleaned_copay_csv = cleaned_dir / "7_copay.csv"
 
     # Final output file with timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -148,7 +156,8 @@ def main():
         (visits_excel, "Patients With Visits By Insurance.xlsx"),
         (patients_excel, "Patients by Diagnosis.xlsx"),
         (patient_list_excel, "patient-list.xls or patient-list.xlsx"),
-        (appointments_excel, "Appointment Report.xlsx")
+        (appointments_excel, "Appointment Report.xlsx"),
+        (copay_excel, "Copay Report.xlsx")
     ]
 
     for file_path, original_name in required_files:
@@ -219,8 +228,17 @@ def main():
         appointments_count = appointments_cleaner.clean_data()
         print(f"✓ Appointments data cleaned: {appointments_count} records\n")
 
-        # Step 6: Combine all data (patients + insurance/visits + patient list + appointments)
-        print("Step 6: Combining all data...")
+        # Step 6: Clean copay data
+        print("Step 6: Cleaning copay data...")
+        copay_cleaner = CopayDataCleaner(
+            str(copay_excel),
+            str(cleaned_copay_csv)
+        )
+        copay_count = copay_cleaner.clean_data()
+        print(f"✓ Copay data cleaned: {copay_count} records\n")
+
+        # Step 7: Combine all data (patients + insurance/visits + patient list + appointments)
+        print("Step 8: Combining all data...")
         final_merger = PatientsInsuranceMerger(
             str(cleaned_patients_csv),
             str(merged_insurance_visits_csv),
@@ -231,8 +249,18 @@ def main():
         final_count = final_merger.merge_data()
         print(f"✓ All data combined: {final_count} records\n")
 
-        # Step 6: Convert to template format
-        print("Step 6: Converting to template format...")
+        # Step 8: Merge copay data
+        print("Step 9: Merging copay data...")
+        copay_merger = CopayMerger(
+            str(final_output_csv),
+            str(cleaned_copay_csv),
+            str(final_output_csv)  # Overwrite the final output with copay added
+        )
+        copay_merged_count = copay_merger.merge_data()
+        print(f"✓ Copay data merged: {copay_merged_count} records\n")
+
+        # Step 9: Convert to template format
+        print("Step 10: Converting to template format...")
         output_dir = base_dir / "output"
         output_excel = output_dir / f"MCA_consolidated_{timestamp}.xlsx"
 
@@ -241,16 +269,16 @@ def main():
         print(f"✓ Data converted to template format: {template_count} records")
         print(f"✓ Template Excel saved to: {output_excel}\n")
 
-        # Clean up intermediate files
-        print("Step 7: Cleaning up intermediate files...")
+        # Step 10: Clean up intermediate files
+        print("Step 11: Cleaning up intermediate files...")
         intermediate_files = [
             cleaned_insurance_csv,
             cleaned_visits_csv,
             cleaned_patients_csv,
             cleaned_patient_list_csv,
             cleaned_appointments_csv,
-            merged_insurance_visits_csv
-            # Note: Keeping final_output_csv for reference
+            merged_insurance_visits_csv,
+            cleaned_copay_csv
         ]
 
         cleaned_count = 0
@@ -269,7 +297,8 @@ def main():
         print("=== Processing Complete ===")
         print(f"📊 Final template: {output_excel}")
         print(f"📄 Raw consolidated CSV: {final_output_csv} (kept for reference)")
-        print(f"📈 Total patients: {template_count}")
+
+        print(f"�📈 Total patients: {template_count}")
         print("📋 Template columns: EMR ID, patient names, demographics, insurance, comorbidities,")
         print("                     diagnosis codes, provider data, and all required fields")
         print(f"🧹 Intermediate files cleaned up: {cleaned_count} files removed")

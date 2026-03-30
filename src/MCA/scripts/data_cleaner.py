@@ -162,6 +162,13 @@ class InsuranceDataCleaner:
             if not pname or not pid:
                 continue
 
+            # Parse account info to get payer type
+            payer_type, _ = self.extract_payer_info(acc)
+
+            # Skip if no payer type found (not a valid insurance row)
+            if not payer_type:
+                continue
+
             # Initialize patient record if not exists
             if pid not in patients:
                 patients[pid] = {
@@ -171,13 +178,13 @@ class InsuranceDataCleaner:
                     "mobile_number": mobile_number,
                     "sex": sex,
                     "dob": dob,
-                    "payers": []
+                    "payers": {}  # Changed from list to dict to store by type
                 }
 
-            # Add payer info
-            patients[pid]["payers"].append((current_payer, mid))
+            # Add payer info by type (P, S, T) - use current_payer as the payer name
+            patients[pid]["payers"][payer_type] = (current_payer, mid)
 
-        # Now create records, assigning payers in order
+        # Now create records, assigning payers by type
         records = []
         for pid, data in patients.items():
             record = {
@@ -196,17 +203,17 @@ class InsuranceDataCleaner:
                 "member_id_t": ""
             }
 
-            # Assign payers
-            for i, (payer_name, member_id) in enumerate(data["payers"][:3]):  # Up to 3
-                if i == 0:
-                    record["payer_name_p"] = payer_name
-                    record["member_id_p"] = member_id
-                elif i == 1:
-                    record["payer_name_s"] = payer_name
-                    record["member_id_s"] = member_id
-                elif i == 2:
-                    record["payer_name_t"] = payer_name
-                    record["member_id_t"] = member_id
+            # Assign payers by type
+            payers = data["payers"]
+            if "P" in payers:
+                record["payer_name_p"] = payers["P"][0]
+                record["member_id_p"] = payers["P"][1]
+            if "S" in payers:
+                record["payer_name_s"] = payers["S"][0]
+                record["member_id_s"] = payers["S"][1]
+            if "T" in payers:
+                record["payer_name_t"] = payers["T"][0]
+                record["member_id_t"] = payers["T"][1]
 
             records.append(record)
 
@@ -837,6 +844,333 @@ class AppointmentsDataCleaner:
             os.makedirs(output_dir, exist_ok=True)
 
         fieldnames = ["patient_name", "phone", "dob", "datetime"]
+
+        with open(self.output_path, 'w', newline='', encoding='utf-8-sig') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(records)
+
+
+class CopayDataCleaner:
+    """Class for cleaning copay data from Excel files."""
+
+    def __init__(self, input_path: str, output_path: str):
+        self.input_path = input_path
+        self.output_path = output_path
+        self.text_cleaner = TextCleaner()
+
+    def clean_data(self) -> int:
+        """Clean copay data and return number of records processed."""
+        # Read Excel data starting from row 13 (header at index 12, data starts at 13)
+        rows = ExcelReader.read_excel_rows(self.input_path, start_row=13)
+
+        # Dictionary to track maximum copay for each patient-insurance combination
+        copay_dict = {}
+
+        for row in rows:
+            if len(row) < 10:  # Skip incomplete rows
+                continue
+
+            # Extract fields by column index (based on header row)
+            patient_name = row[1].strip() if len(row) > 1 else ""
+            primary_insurance = row[6].strip() if len(row) > 6 else ""
+            actual_copay = row[9] if len(row) > 9 else ""
+
+            # Skip header rows or empty patient names
+            if not patient_name or patient_name.lower() in ["patient", "nan"]:
+                continue
+
+            # Clean patient name
+            patient_name_clean = self.text_cleaner.clean_text(patient_name)
+
+            # Clean primary insurance
+            primary_insurance_clean = self.text_cleaner.clean_text(primary_insurance)
+
+            # Convert actual copay to float, default to 0 if not numeric
+            try:
+                actual_copay_clean = float(str(actual_copay).replace('$', '').replace(',', '').strip()) if actual_copay else 0.0
+            except ValueError:
+                actual_copay_clean = 0.0
+
+            # Create key for patient-insurance combination
+            key = f"{patient_name_clean}|{primary_insurance_clean}"
+
+            # Keep the maximum copay value for each unique combination
+            if key not in copay_dict or actual_copay_clean > copay_dict[key]:
+                copay_dict[key] = actual_copay_clean
+
+        # Convert dictionary to records list
+        records = []
+        for key, max_copay in copay_dict.items():
+            patient_name_clean, primary_insurance_clean = key.split('|', 1)
+            records.append({
+                "patient_name": patient_name_clean,
+                "primary_insurance": primary_insurance_clean,
+                "actual_copay": max_copay
+            })
+
+        # Write to CSV
+        self._write_csv(records)
+        return len(records)
+
+    def _write_csv(self, records: List[Dict]) -> None:
+        """Write records to CSV file."""
+        os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
+
+        fieldnames = ["patient_name", "primary_insurance", "actual_copay"]
+
+        with open(self.output_path, 'w', newline='', encoding='utf-8-sig') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(records)
+class DemographicScheduleCleaner:
+    """Class for cleaning demographic data from multi-sheet Excel workbooks."""
+
+    def __init__(self, input_path: str, output_path: str):
+        self.input_path = input_path
+        self.output_path = output_path
+        self.text_cleaner = TextCleaner()
+
+    def clean_data(self) -> int:
+        """Clean demographic data from all sheets and return number of records processed."""
+        try:
+            import openpyxl
+        except ImportError:
+            raise ImportError("openpyxl is required for Excel file reading. Install with: pip install openpyxl")
+
+        # Load the workbook
+        workbook = openpyxl.load_workbook(self.input_path, data_only=True)
+        records = []
+        processed_sheets = 0
+        skipped_sheets = 0
+
+        # Process each sheet
+        for sheet_name in workbook.sheetnames[:1]:  # Process only first sheet for testing
+            sheet = workbook[sheet_name]
+            processed_sheets += 1
+
+            # Skip if sheet is empty
+            if sheet.max_row < 10:
+                skipped_sheets += 1
+                continue
+
+            try:
+                record = self._extract_patient_data(sheet)
+                if record:
+                    records.append(record)
+                else:
+                    skipped_sheets += 1
+            except Exception as e:
+                print(f"Warning: Error processing sheet {sheet_name}: {e}")
+                skipped_sheets += 1
+                continue
+
+        print(f"Processed {processed_sheets} sheets, created {len(records)} records, skipped {skipped_sheets} sheets")
+
+        # Write to CSV
+        self._write_csv(records)
+        return len(records)
+
+    def _extract_patient_data(self, sheet) -> Optional[Dict]:
+        """Extract patient data from a single sheet."""
+        record = {}
+
+        try:
+            # Patient Name (Row 3, Column 1 - 1-indexed)
+            patient_name = str(sheet.cell(row=3, column=1).value or "").strip()
+            if not patient_name or patient_name.lower() in ["nan", "none", ""]:
+                return None
+            record["patient_name"] = self.text_cleaner.clean_text(patient_name)
+
+            # External ID (Row 3, Column 6)
+            external_id = str(sheet.cell(row=3, column=6).value or "").strip()
+            record["external_id"] = external_id
+
+            # DOB (Row 7, Column 4)
+            dob = str(sheet.cell(row=7, column=4).value or "").strip()
+            record["dob"] = dob
+
+            # Phone # - split into mobile and home (Row 8, Columns 4 and 12)
+            cell_phone = str(sheet.cell(row=8, column=4).value or "").strip()
+            home_phone = str(sheet.cell(row=8, column=12).value or "").strip()
+            
+            # Clean phone numbers (remove prefixes and extra characters)
+            mobile_clean = self._clean_phone_number(cell_phone)
+            home_clean = self._clean_phone_number(home_phone)
+            
+            record["mobile_number"] = mobile_clean
+            record["home_number"] = home_clean
+
+            # Email (Row 10, Column 4)
+            email = str(sheet.cell(row=10, column=4).value or "").strip()
+            record["email"] = email
+
+            # Language (Row 11, Column 4)
+            language = str(sheet.cell(row=11, column=4).value or "").strip()
+            record["language"] = language
+
+            # Race (Row 12, Column 4)
+            race = str(sheet.cell(row=12, column=4).value or "").strip()
+            record["race"] = race
+
+            # Sex - search for valid sex values across common locations
+            sex = ""
+            valid_sex_values = ["male", "female", "m", "f", "man", "woman", "boy", "girl", "male", "female"]
+            
+            # Search in likely locations for sex data
+            search_locations = [
+                (7, 17), (7, 4), (7, 12), (8, 17), (9, 4), (6, 17), (8, 4), (7, 18), (7, 19)
+            ]
+            
+            for row, col in search_locations:
+                candidate = str(sheet.cell(row=row, column=col).value or "").strip()
+                if candidate and candidate.lower() in valid_sex_values:
+                    sex = candidate
+                    break
+            
+            record["sex"] = sex
+
+            # Primary Address (Row 14-15, Column 4)
+            addr_line1 = str(sheet.cell(row=14, column=4).value or "").strip()
+            addr_line2 = str(sheet.cell(row=15, column=4).value or "").strip()
+            primary_address = f"{addr_line1} {addr_line2}".strip()
+            record["primary_address"] = primary_address
+
+            # Notes (Row 16, Column 4)
+            notes = str(sheet.cell(row=16, column=4).value or "").strip()
+            record["notes"] = notes
+
+            # Primary Payer/ Plan (Row 23, Column 4)
+            primary_payer_raw = str(sheet.cell(row=23, column=4).value or "").strip()
+            # Clean up the payer info (remove extra formatting)
+            primary_payer_raw = primary_payer_raw.replace("_x000d_", " ").replace("\n", " ")
+            record["primary_payer_plan"] = primary_payer_raw
+            
+            # Parse primary insurance details
+            primary_insurance, primary_group_id, primary_member_id = self._parse_insurance_details(primary_payer_raw)
+            record["primary_insurance"] = primary_insurance
+            record["primary_group_id"] = primary_group_id
+            record["primary_member_id"] = primary_member_id
+
+            # Sec Payer/ Plan (Row 23, Column 19)
+            sec_payer_raw = str(sheet.cell(row=23, column=19).value or "").strip()
+            sec_payer_raw = sec_payer_raw.replace("_x000d_", " ").replace("\n", " ")
+            record["sec_payer_plan"] = sec_payer_raw
+            
+            # Parse secondary insurance details
+            sec_insurance, sec_group_id, sec_member_id = self._parse_insurance_details(sec_payer_raw)
+            record["sec_insurance"] = sec_insurance
+            record["sec_group_id"] = sec_group_id
+            record["sec_member_id"] = sec_member_id
+
+            # Primary Ins Copay - sum of Primary, Specialist, and Other (Rows 25-27, Column 24)
+            primary_copay = self._extract_copay_amount(str(sheet.cell(row=25, column=24).value or ""))
+            specialist_copay = self._extract_copay_amount(str(sheet.cell(row=26, column=24).value or ""))
+            other_copay = self._extract_copay_amount(str(sheet.cell(row=27, column=24).value or ""))
+
+            total_copay = primary_copay + specialist_copay + other_copay
+            record["primary_ins_copay"] = f"{total_copay:.2f}"
+
+            # Medication Name - collect all medications starting from Row 36, Column 1
+            medications = []
+            row = 36  # Start from row 36 (1-indexed)
+            while row <= sheet.max_row:
+                med_name = str(sheet.cell(row=row, column=1).value or "").strip()
+                if med_name and med_name.lower() not in ["nan", "none", ""]:
+                    medications.append(med_name)
+                row += 2  # Medications seem to be every other row
+
+            record["medication_name"] = "; ".join(medications)
+
+        except Exception as e:
+            print(f"Error extracting data: {e}")
+            return None
+
+        return record
+
+    def _extract_copay_amount(self, copay_text: str) -> float:
+        """Extract numeric amount from copay text like 'Primary: $0.00' or '0/0/0'."""
+        if not copay_text:
+            return 0.0
+
+        # Check if it's in "0/0/0" format (slash-separated numbers)
+        if '/' in copay_text:
+            parts = copay_text.split('/')
+            total = 0.0
+            for part in parts:
+                try:
+                    total += float(part.strip())
+                except ValueError:
+                    continue
+            return total
+
+        # Find dollar amount in text like 'Primary: $0.00'
+        import re
+        match = re.search(r'\$?(\d+\.?\d*)', copay_text.replace(',', ''))
+        if match:
+            try:
+                return float(match.group(1))
+            except ValueError:
+                return 0.0
+        return 0.0
+
+    def _parse_insurance_details(self, insurance_text: str) -> tuple[str, str, str]:
+        """Parse insurance text to extract insurance name, group ID, and member ID."""
+        if not insurance_text:
+            return "", "", ""
+        
+        import re
+        
+        # Extract Group ID
+        group_match = re.search(r'Group ID:\s*([^\s]+)', insurance_text)
+        group_id = group_match.group(1) if group_match else ""
+        
+        # Extract Member ID
+        member_match = re.search(r'Member ID:\s*([^\s]+)', insurance_text)
+        member_id = member_match.group(1) if member_match else ""
+        
+        # Extract insurance name (everything before "Group ID")
+        insurance_name = insurance_text
+        if group_match:
+            insurance_name = insurance_text[:group_match.start()].strip()
+        elif member_match:
+            insurance_name = insurance_text[:member_match.start()].strip()
+        
+        # Clean up insurance name
+        insurance_name = insurance_name.rstrip('/').strip()
+        
+        return insurance_name, group_id, member_id
+
+    def _clean_phone_number(self, phone_text: str) -> str:
+        """Clean phone number by removing prefixes, extra characters, and formatting."""
+        if not phone_text:
+            return ""
+        
+        # Remove common prefixes and extra characters
+        cleaned = phone_text.replace("cell:", "").replace("home:", "").replace(":-", "").replace("-", "").replace("(", "").replace(")", "").replace(" ", "").strip()
+        
+        # Remove extra whitespace and normalize
+        cleaned = " ".join(cleaned.split())
+        
+        # If it's just a dash or empty after cleaning, return empty
+        if cleaned in ["-", "", "nan", "none"]:
+            return ""
+            
+        return cleaned
+
+    def _write_csv(self, records: List[Dict]) -> None:
+        """Write records to CSV file."""
+        os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
+
+        if not records:
+            return
+
+        fieldnames = [
+            "patient_name", "external_id", "dob", "mobile_number", "home_number", "email", "language",
+            "race", "sex", "primary_address", "notes", "primary_payer_plan", "primary_insurance",
+            "primary_group_id", "primary_member_id", "sec_payer_plan", "sec_insurance", "sec_group_id",
+            "sec_member_id", "primary_ins_copay", "medication_name"
+        ]
 
         with open(self.output_path, 'w', newline='', encoding='utf-8-sig') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
