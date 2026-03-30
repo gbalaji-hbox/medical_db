@@ -40,6 +40,7 @@ Follow the detailed steps below for each report type. All reports should be expo
 3. Click **View** to generate the report.
 4. Export to Excel format as "Patients by Insurance.xlsx".
 
+   ![Patients by Insurance Navigation](screenshots/patients_by_insurance_navigation.png)
    ![Patients by Insurance Report](screenshots/patients_by_insurance_report.png)
 
    **Note:** No secondary/tertiary insurance details available.
@@ -52,6 +53,7 @@ Follow the detailed steps below for each report type. All reports should be expo
 3. Click **View** to generate the report.
 4. Export to Excel format as "Patients With Visits By Insurance.xlsx".
 
+   ![Patients With Visits By Insurance Navigation](screenshots/patients_with_visits_navigation.png)
    ![Patients With Visits By Insurance Report](screenshots/patients_with_visits_report.png)
 
    **Note:** Ignore patients without insurance.
@@ -64,6 +66,7 @@ Follow the detailed steps below for each report type. All reports should be expo
 3. Click **View** to generate the report.
 4. Export to Excel format as "Services by Provider Summary.xlsx".
 
+   ![Services By Provider Summary Navigation](screenshots/services_by_provider_navigation.png)
    ![Services By Provider Summary Report](screenshots/services_by_provider_report.png)
 
 ### 5. Patient Center (Patient List) Report
@@ -74,6 +77,7 @@ Follow the detailed steps below for each report type. All reports should be expo
 3. Go to **File > Export to Excel**.
 4. Save as "patient-list.xls" (script will convert to .xlsx).
 
+   ![Patient Center Navigation](screenshots/patient_center_navigation.png)
    ![Patient Center Export](screenshots/patient_center_export.png)
 
 ### 6. Appointment Reports
@@ -85,4 +89,5 @@ Appointment reports can be downloaded by following these steps:
 3. Click **View** to generate the report.
 4. As per other reports, click **Export to Excel** to download the report.
 
+   ![Appointment Navigation](screenshots/appointment_navigation.png)
    ![Appointment Report](screenshots/appointment_report.png)

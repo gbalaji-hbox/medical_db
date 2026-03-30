@@ -317,6 +317,10 @@ class TemplateFormatter:
             # Map diagnosis to comorbidities
             comorbidities, primary_dx, primary_icd, secondary_dx, secondary_icd = self._map_diagnosis_to_comorbidities(str(row.get('all_diagnoses', '')), str(row.get('all_icds', '')))
 
+            # Skip patients without supported primary diagnosis
+            if not primary_dx.strip() or not primary_icd.strip():
+                continue
+
             # Classify insurance type
             insurance_type = classify_insurance(str(row.get('payer', '')))
 

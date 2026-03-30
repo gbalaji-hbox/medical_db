@@ -511,6 +511,8 @@ class PatientsDataCleaner:
                 phone = row[5].strip() if len(row) > 5 else ""
                 dob = row[6].strip() if len(row) > 6 else ""
                 email = row[7].strip() if len(row) > 7 else ""
+                provider_name = row[8].strip() if len(row) > 8 else ""
+                primary_care_provider = row[9].strip() if len(row) > 9 else ""
 
                 provider_key = f"{self.text_cleaner.normalize_name_key(name)}|{self.text_cleaner.normalize_date_key(dob)}"
                 provider_data = provider_lookup.get(provider_key, "")
@@ -525,7 +527,9 @@ class PatientsDataCleaner:
                     "last_visit_date": visit_date,
                     "diagnosis": current_diagnosis or "",
                     "icd_code": current_icd or "",
-                    "provider_data": provider_data
+                    "provider_data": provider_data,
+                    "provider_name": provider_name,
+                    "primary_care_provider": primary_care_provider
                 })
 
         # Write to CSV
@@ -538,7 +542,7 @@ class PatientsDataCleaner:
 
         fieldnames = [
             "patient_id", "name", "address", "phone", "dob", "email",
-            "last_visit_date", "diagnosis", "icd_code", "provider_data"
+            "last_visit_date", "diagnosis", "icd_code", "provider_data", "provider_name", "primary_care_provider"
         ]
 
         with open(self.output_path, 'w', newline='', encoding='utf-8-sig') as csvfile:

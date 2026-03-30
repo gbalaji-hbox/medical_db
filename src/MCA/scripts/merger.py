@@ -8,6 +8,8 @@ All operations use raw file I/O without external libraries like pandas.
 import os
 import csv
 from typing import List, Dict, Optional
+from pathlib import Path
+from collections import defaultdict
 
 
 class CSVReader:
@@ -184,61 +186,81 @@ class InsuranceVisitsMerger:
 
 
 class PatientsInsuranceMerger:
-    """Class for merging patients demographics with insurance data."""
+    """Class for merging base data with secondary data."""
 
-    def __init__(self, patients_path: str, insurance_path: str, patient_list_path: str, output_path: str, appointments_path: str = None):
-        self.patients_path = patients_path
-        self.insurance_path = insurance_path
+    def __init__(self, base_path: str, secondary_path: str, patient_list_path: str, output_path: str, appointments_path: str = None):
+        self.base_path = base_path
+        self.secondary_path = secondary_path
         self.patient_list_path = patient_list_path
         self.output_path = output_path
         self.appointments_path = appointments_path
+        self.cause_mapping = self._load_cause_mapping()
+
+    def _load_cause_mapping(self) -> Dict[str, str]:
+        """Load cause to ICD mapping from api_prescriptioncauselist.csv."""
+        cause_file = Path(__file__).parent.parent / 'template' / 'api_prescriptioncauselist_202603101243.csv'
+        icd_to_cause = {}
+        with open(cause_file, 'r', encoding='utf-8-sig') as csvfile:
+            reader = csv.DictReader(csvfile)
+            for row in reader:
+                icd = row.get('icd_code', '').strip()
+                cause = row.get('cause', '').strip()
+                if icd and cause:
+                    icd_to_cause[icd] = cause
+        return icd_to_cause
+
+    def _is_icd_supported(self, icd: str) -> bool:
+        """Check if ICD code is supported (matches the cause mapping)."""
+        if not icd:
+            return False
+        
+        # Try exact match first
+        if icd in self.cause_mapping:
+            return True
+        
+        # Try range matching with special diabetes handling
+        diabetes_codes = ['E10', 'E11', 'E13']
+        if any(icd.startswith(code) for code in diabetes_codes):
+            # Check if diabetes is in mapping
+            for mapped_icd, cause_name in self.cause_mapping.items():
+                if cause_name == 'Type 2 Diabetes':
+                    return True
+        else:
+            # Regular range matching
+            for mapped_icd in self.cause_mapping:
+                if icd.startswith(mapped_icd.split('.')[0]):
+                    return True
+        
+        return False
 
     def merge_data(self) -> int:
-        """Merge patients, insurance, and patient list data, return number of records."""
+        """Merge base, secondary, and patient list data, return number of records."""
         # Read input files
-        patients_records = CSVReader.read_csv(self.patients_path)
-        insurance_records = CSVReader.read_csv(self.insurance_path)
+        base_records = CSVReader.read_csv(self.base_path)
+        secondary_records = CSVReader.read_csv(self.secondary_path)
         patient_list_records = CSVReader.read_csv(self.patient_list_path)
 
-        print(f"Patients file: {len(patients_records)} records")
-        print(f"Insurance file: {len(insurance_records)} records")
+        print(f"Base file: {len(base_records)} records")
+        print(f"Secondary file: {len(secondary_records)} records")
         print(f"Patient list file: {len(patient_list_records)} records")
 
-        # Create lookup dictionary for insurance data
-        insurance_dict = {}
-        for record in insurance_records:
+        # Create lookup dictionary for secondary data
+        secondary_dict = {}
+        secondary_groups = defaultdict(list)
+        for record in secondary_records:
             patient_id = record.get('patient_id', '').strip()
             if patient_id:
-                # Determine main payer (same logic as before)
-                main_payer = record.get('payer_name_s', '').strip()
-                main_member_id = record.get('member_id_s', '').strip()
-
-                if not main_payer:
-                    main_payer = record.get('payer_name_p', '').strip()
-                    main_member_id = record.get('member_id_p', '').strip()
-
-                if not main_payer:
-                    main_payer = record.get('payer_name_t', '').strip()
-                    main_member_id = record.get('member_id_t', '').strip()
-
-                insurance_dict[patient_id] = {
-                    'patient_name': record.get('patient_name', ''),
-                    'address': record.get('address', ''),
-                    'home_number': record.get('home_number', ''),
-                    'mobile_number': record.get('mobile_number', ''),
-                    'sex': record.get('sex', ''),
-                    'dob': record.get('dob', ''),
-                    'member_id': main_member_id,
-                    'payer': main_payer,
-                    'last_visit': record.get('last_visit', ''),
-                    'visit_count': record.get('visit_count', ''),
-                    'payer_name_p': record.get('payer_name_p', ''),
-                    'member_id_p': record.get('member_id_p', ''),
-                    'payer_name_s': record.get('payer_name_s', ''),
-                    'member_id_s': record.get('member_id_s', ''),
-                    'payer_name_t': record.get('payer_name_t', ''),
-                    'member_id_t': record.get('member_id_t', '')
-                }
+                secondary_groups[patient_id].append(record)
+                if patient_id not in secondary_dict:  # take first for single fields
+                    secondary_dict[patient_id] = {
+                        'patient_name': record.get('name', ''),
+                        'address': record.get('address', ''),
+                        'dob': record.get('dob', ''),
+                        'email': record.get('email', ''),
+                        'provider_name': record.get('provider_name', ''),
+                        'provider_data': record.get('provider_data', ''),
+                        'primary_care_provider': record.get('primary_care_provider', '')
+                    }
 
         # Create lookup dictionary for patient list data (keyed by patient_id only)
         patient_list_dict = {}
@@ -282,11 +304,10 @@ class PatientsInsuranceMerger:
                         appointments_dict[lookup_key] = datetime_val
 
         # Merge data with intelligent deduplication - keep all diagnoses per patient
-        from collections import defaultdict
         patient_groups = defaultdict(list)
         
-        # Group records by patient_id
-        for record in patients_records:
+        # Group base records by patient_id
+        for record in base_records:
             patient_id = record.get('patient_id', '').strip()
             if patient_id:
                 patient_groups[patient_id].append(record)
@@ -294,23 +315,41 @@ class PatientsInsuranceMerger:
         merged_records = []
         
         # Process each unique patient
-        for patient_id, patient_records in patient_groups.items():
-            # Get insurance data for this patient if available
-            insurance_data = insurance_dict.get(patient_id, {})
+        for patient_id, base_records_list in patient_groups.items():
+            # Skip patients without diagnosis data
+            if patient_id not in secondary_groups or not secondary_groups[patient_id]:
+                continue
+                
+            # Get secondary data for this patient if available
+            secondary_data = secondary_dict.get(patient_id, {})
             
             # Get patient list data using patient_id only
             patient_list_data = patient_list_dict.get(patient_id, {})
             
             # Use the first record as the base
-            base_record = patient_records[0]
+            base_record = base_records_list[0]
+            
+            # Determine main payer (prefer primary over secondary)
+            main_payer = base_record.get('payer_name_p', '').strip()
+            if not main_payer:
+                main_payer = base_record.get('payer_name_s', '').strip()
+            if not main_payer:
+                main_payer = base_record.get('payer_name_t', '').strip()
+            
+            # Determine main member ID (prefer primary over secondary)
+            main_member_id = base_record.get('member_id_p', '').strip()
+            if not main_member_id:
+                main_member_id = base_record.get('member_id_s', '').strip()
+            if not main_member_id:
+                main_member_id = base_record.get('member_id_t', '').strip()
             
             # Get next appointment by matching patient name + dob
             next_appointment = ""
             if appointments_dict:
                 from data_cleaner import TextCleaner
                 text_cleaner = TextCleaner()
-                patient_name = insurance_data.get('patient_name', base_record.get('name', ''))
-                dob = insurance_data.get('dob', base_record.get('dob', ''))
+                patient_name = base_record.get('patient_name', secondary_data.get('patient_name', ''))
+                dob = base_record.get('dob', secondary_data.get('dob', ''))
                 name_key = text_cleaner.normalize_name_key(patient_name)
                 dob_key = text_cleaner.normalize_date_key(dob)
                 lookup_key = f"{name_key}|{dob_key}"
@@ -319,7 +358,7 @@ class PatientsInsuranceMerger:
             # Collect all diagnoses and ICD codes for this patient
             all_diagnoses = []
             all_icds = []
-            for record in patient_records:
+            for record in secondary_groups.get(patient_id, []):
                 diagnosis = record.get('diagnosis', '').strip()
                 icd = record.get('icd_code', '').strip()
                 if diagnosis:
@@ -327,33 +366,40 @@ class PatientsInsuranceMerger:
                 if icd:
                     all_icds.append(icd)
             
+            # Check if any ICD matches supported codes
+            has_supported_icd = any(self._is_icd_supported(icd) for icd in all_icds)
+            if not has_supported_icd:
+                continue
+
             merged_records.append({
                 "patient_id": patient_id,
-                "patient_name": insurance_data.get('patient_name', base_record.get('name', '')),  # Prefer insurance name
-                "address": patient_list_data.get('address', insurance_data.get('address', base_record.get('address', ''))),  # Street address from patient list
+                "patient_name": base_record.get('patient_name', secondary_data.get('patient_name', '')),  # Prefer base name
+                "address": patient_list_data.get('address', base_record.get('address', secondary_data.get('address', ''))),  # Street address from patient list
                 "city": patient_list_data.get('city', ''),  # City from patient list
                 "state": patient_list_data.get('state', ''),  # State from patient list
                 "zip": patient_list_data.get('zip', ''),  # ZIP from patient list
-                "home_number": insurance_data.get('home_number', ''),  # From insurance/visits merge
-                "mobile_number": insurance_data.get('mobile_number', ''),  # From insurance/visits merge
-                "sex": insurance_data.get('sex', ''),  # From insurance only
-                "dob": insurance_data.get('dob', base_record.get('dob', '')),  # Prefer insurance DOB
-                "email": base_record.get('email', ''),  # From patients only
+                "home_number": base_record.get('home_number', ''),  # From base/visits merge
+                "mobile_number": base_record.get('mobile_number', ''),  # From base/visits merge
+                "sex": base_record.get('sex', ''),  # From base only
+                "dob": base_record.get('dob', secondary_data.get('dob', '')),  # Prefer base DOB
+                "email": secondary_data.get('email', ''),  # From secondary only
                 "emergency_contact": patient_list_data.get('emergency_contact', ''),  # From patient list
                 "emergency_contact_number": patient_list_data.get('emergency_contact_number', ''),  # From patient list
                 "all_diagnoses": "|".join(all_diagnoses),  # Store all diagnoses for comorbidity processing
                 "all_icds": "|".join(all_icds),  # Store all ICDs for comorbidity processing
-                "member_id": insurance_data.get('member_id', ''),  # From insurance only
-                "payer": insurance_data.get('payer', ''),  # From insurance only
-                "payer_name_p": insurance_data.get('payer_name_p', ''),
-                "member_id_p": insurance_data.get('member_id_p', ''),
-                "payer_name_s": insurance_data.get('payer_name_s', ''),
-                "member_id_s": insurance_data.get('member_id_s', ''),
-                "payer_name_t": insurance_data.get('payer_name_t', ''),
-                "member_id_t": insurance_data.get('member_id_t', ''),
-                "last_visit": insurance_data.get('last_visit', base_record.get('last_visit_date', '')),  # Prefer insurance last_visit
+                "member_id": main_member_id,  # From base only
+                "payer": main_payer,  # From base only
+                "payer_name_p": base_record.get('payer_name_p', ''),
+                "member_id_p": base_record.get('member_id_p', ''),
+                "payer_name_s": base_record.get('payer_name_s', ''),
+                "member_id_s": base_record.get('member_id_s', ''),
+                "payer_name_t": base_record.get('payer_name_t', ''),
+                "member_id_t": base_record.get('member_id_t', ''),
+                "last_visit": base_record.get('last_visit', ''),  # From base
                 "next_appointment": next_appointment,
-                "provider_data": base_record.get('provider_data', '')
+                "provider_data": secondary_data.get('provider_data', ''),
+                "provider_name": secondary_data.get('provider_name', ''),
+                "primary_care_provider": secondary_data.get('primary_care_provider', '')
             })
 
         # Define output columns
@@ -361,7 +407,8 @@ class PatientsInsuranceMerger:
             "patient_id", "patient_name", "address", "city", "state", "zip", "home_number", "mobile_number",
             "sex", "dob", "email", "emergency_contact", "emergency_contact_number",
             "all_diagnoses", "all_icds", "member_id", "payer", "payer_name_p", "member_id_p",
-            "payer_name_s", "member_id_s", "payer_name_t", "member_id_t", "last_visit", "next_appointment", "provider_data"
+            "payer_name_s", "member_id_s", "payer_name_t", "member_id_t", "last_visit", "next_appointment", 
+            "provider_data", "provider_name", "primary_care_provider"
         ]
 
         # Write final merged data

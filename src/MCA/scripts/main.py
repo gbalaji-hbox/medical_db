@@ -137,8 +137,8 @@ def main():
     copay_excel = ensure_xlsx_format(base_dir / "Copay Report.xlsx")
 
     # Intermediate output files
-    cleaned_patients_csv = cleaned_dir / "1_patients_by_diagnosis.csv"
-    cleaned_insurance_csv = cleaned_dir / "2_patients_by_insurance.csv"
+    cleaned_insurance_csv = cleaned_dir / "1_patients_by_insurance.csv"
+    cleaned_patients_csv = cleaned_dir / "2_patients_by_diagnosis.csv"
     cleaned_visits_csv = cleaned_dir / "3_patients_with_visits_by_insurance.csv"
     cleaned_patient_list_csv = cleaned_dir / "4_patient_list.csv"
     cleaned_appointments_csv = cleaned_dir / "5_appointments.csv"
@@ -173,8 +173,17 @@ def main():
         sys.exit(1)
 
     try:
-        # Step 1: Clean patients by diagnosis data (base file)
-        print("Step 1: Cleaning patients by diagnosis data...")
+        # Step 1: Clean insurance data (base file)
+        print("Step 1: Cleaning insurance data...")
+        insurance_cleaner = InsuranceDataCleaner(
+            str(insurance_excel),
+            str(cleaned_insurance_csv)
+        )
+        insurance_count = insurance_cleaner.clean_data()
+        print(f"✓ Insurance data cleaned: {insurance_count} records\n")
+
+        # Step 2: Clean patients by diagnosis data
+        print("Step 2: Cleaning patients by diagnosis data...")
         patients_cleaner = PatientsDataCleaner(
             str(patients_excel),
             str(cleaned_patients_csv),
@@ -182,15 +191,6 @@ def main():
         )
         patients_count = patients_cleaner.clean_data()
         print(f"✓ Patients by diagnosis data cleaned: {patients_count} records\n")
-
-        # Step 2: Clean insurance data
-        print("Step 2: Cleaning insurance data...")
-        insurance_cleaner = InsuranceDataCleaner(
-            str(insurance_excel),
-            str(cleaned_insurance_csv)
-        )
-        insurance_count = insurance_cleaner.clean_data()
-        print(f"✓ Insurance data cleaned: {insurance_count} records\n")
 
         # Step 3: Clean visits data and merge with insurance
         print("Step 3: Cleaning visits data and merging with insurance...")
@@ -237,11 +237,11 @@ def main():
         copay_count = copay_cleaner.clean_data()
         print(f"✓ Copay data cleaned: {copay_count} records\n")
 
-        # Step 7: Combine all data (patients + insurance/visits + patient list + appointments)
-        print("Step 8: Combining all data...")
+        # Step 7: Combine all data (insurance/visits + patients + patient list + appointments)
+        print("Step 7: Combining all data...")
         final_merger = PatientsInsuranceMerger(
-            str(cleaned_patients_csv),
             str(merged_insurance_visits_csv),
+            str(cleaned_patients_csv),
             str(cleaned_patient_list_csv),
             str(final_output_csv),
             str(cleaned_appointments_csv)
@@ -250,7 +250,7 @@ def main():
         print(f"✓ All data combined: {final_count} records\n")
 
         # Step 8: Merge copay data
-        print("Step 9: Merging copay data...")
+        print("Step 8: Merging copay data...")
         copay_merger = CopayMerger(
             str(final_output_csv),
             str(cleaned_copay_csv),
@@ -260,7 +260,7 @@ def main():
         print(f"✓ Copay data merged: {copay_merged_count} records\n")
 
         # Step 9: Convert to template format
-        print("Step 10: Converting to template format...")
+        print("Step 9: Converting to template format...")
         output_dir = base_dir / "output"
         output_excel = output_dir / f"MCA_consolidated_{timestamp}.xlsx"
 
@@ -270,7 +270,7 @@ def main():
         print(f"✓ Template Excel saved to: {output_excel}\n")
 
         # Step 10: Clean up intermediate files
-        print("Step 11: Cleaning up intermediate files...")
+        print("Step 10: Cleaning up intermediate files...")
         intermediate_files = [
             cleaned_insurance_csv,
             cleaned_visits_csv,
