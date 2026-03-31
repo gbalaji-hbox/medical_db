@@ -52,8 +52,54 @@ class TemplateFormatter:
         self.input_csv = input_csv
         self.output_excel = output_excel
 
-        # Load ICD to cause mapping
-        self.cause_mapping = self._load_cause_mapping()
+        # Load mappings
+        self.cause_to_icd = self._load_cause_mapping()
+        self.icd_to_cause = {v: k for k, v in self.cause_to_icd.items()}
+
+        # Cause to comorbidity column mapping
+        self.cause_to_comorbidity = {
+                    'Coronary Artery Disease': 'CORONARY ARTERY DISEASE',
+                    'Arrhythmia': 'ARRHYTHMIA',
+                    'CHF (Congestive Heart Failure)': 'CONGESTIVE HEART FAILURE',
+                    'Peripheral Vascular Disease': 'PERIPHERAL VASCULAR',
+                    'Valvular Heart Disease': 'VALVULAR HEART',
+                    'Cerebrovascular Accident': 'CEREBROVASCULAR ACCIDENT',
+                    'Hyperlipidemia': 'HYPERLIPIDEMIA',
+                    'Angina Pectoris': 'ANGINA PECTORIS',
+                    'Hypotension': 'HYPOTENSION',
+                    'Hypertension': 'HYPERTENSION',
+                    'Obesity': 'OBESITY',
+                    'Type 2 Diabetes': 'DIABETES',
+                    'Chronic Kidney': 'CHRONIC KIDNEY DISEASE',
+                    'COPD': 'COPD',
+                    'Chronic Bronchitis': 'COPD',  # Chronic Bronchitis maps to COPD
+                    'Respiratory Failure': 'RESPIRATORY FAILURE',
+                    'Asthma': 'ASTHMA',
+                    'Sleep Apnea': 'SLEEP APNEA',
+                    'Dyspnea': 'DYSPNEA',
+                    'Emphysema': 'EMPHYSEMA',
+                    'Emphysema ': 'EMPHYSEMA',  # Handle trailing space
+                    'Bronchiectasis': 'BRONCHIECTASIS',
+                    'Hypoxemia': 'HYPOXEMIA',
+                    'Chronic Hypoxia': 'HYPOXEMIA'  # Map Chronic Hypoxia to HYPOXEMIA
+                }
+
+        # Comorbidity columns
+        self.comorbidity_columns = [
+            'CORONARY ARTERY DISEASE', 'ARRHYTHMIA', 'CONGESTIVE HEART FAILURE',
+            'PERIPHERAL VASCULAR', 'VALVULAR HEART', 'CEREBROVASCULAR ACCIDENT',
+            'HYPERLIPIDEMIA', 'ANGINA PECTORIS', 'HYPOTENSION', 'HYPERTENSION',
+            'OBESITY', 'DIABETES', 'CHRONIC KIDNEY DISEASE', 'COPD',
+            'RESPIRATORY FAILURE', 'ASTHMA', 'SLEEP APNEA', 'DYSPNEA',
+            'EMPHYSEMA', 'BRONCHIECTASIS', 'HYPOXEMIA'
+        ]
+
+        # Create column to ICD mapping
+        self.column_to_icd = {}
+        for cause, icd in self.cause_to_icd.items():
+            col = self.cause_to_comorbidity.get(cause, '')
+            if col:
+                self.column_to_icd[col] = icd
 
         # Template column order
         self.template_columns = [
@@ -82,9 +128,9 @@ class TemplateFormatter:
         """Load cause to ICD mapping from api_prescriptioncauselist.csv."""
         cause_file = Path(__file__).parent.parent / 'template' / 'api_prescriptioncauselist_202603101243.csv'
         cause_df = pd.read_csv(cause_file)
-        # Create mapping from ICD code to cause name
-        icd_to_cause = dict(zip(cause_df['icd_code'], cause_df['cause']))
-        return icd_to_cause
+        # Create mapping from cause name to ICD code
+        cause_to_icd = dict(zip(cause_df['cause'], cause_df['icd_code']))
+        return cause_to_icd
 
     def _parse_patient_name(self, full_name: str) -> Tuple[str, str, str, str]:
         """Parse 'Lastname, Firstname' into components."""
@@ -200,16 +246,7 @@ class TemplateFormatter:
         secondary_icd = ''
 
         # Initialize all comorbidities to 'NO'
-        comorbidity_columns = [
-            'CORONARY ARTERY DISEASE', 'ARRHYTHMIA', 'CONGESTIVE HEART FAILURE',
-            'PERIPHERAL VASCULAR', 'VALVULAR HEART', 'CEREBROVASCULAR ACCIDENT',
-            'HYPERLIPIDEMIA', 'ANGINA PECTORIS', 'HYPOTENSION', 'HYPERTENSION',
-            'OBESITY', 'DIABETES', 'CHRONIC KIDNEY DISEASE', 'COPD',
-            'RESPIRATORY FAILURE', 'ASTHMA', 'SLEEP APNEA', 'DYSPNEA',
-            'EMPHYSEMA', 'BRONCHIECTASIS', 'HYPOXEMIA'
-        ]
-
-        for col in comorbidity_columns:
+        for col in self.comorbidity_columns:
             comorbidities[col] = 'NO'
 
         # Split all diagnoses and ICDs
@@ -229,20 +266,20 @@ class TemplateFormatter:
             matched_cause = None
 
             # Try exact match first
-            if icd in self.cause_mapping:
-                matched_cause = self.cause_mapping[icd]
+            if icd in self.icd_to_cause:
+                matched_cause = self.icd_to_cause[icd]
             else:
                 # Try range matching with special diabetes handling
                 diabetes_codes = ['E10', 'E11', 'E13']
                 if any(icd.startswith(code) for code in diabetes_codes):
                     # Find the diabetes entry in the mapping
-                    for mapped_icd, cause_name in self.cause_mapping.items():
+                    for mapped_icd, cause_name in self.icd_to_cause.items():
                         if cause_name == 'Type 2 Diabetes':
                             matched_cause = cause_name
                             break
                 else:
                     # Regular range matching for other conditions
-                    for mapped_icd, cause_name in self.cause_mapping.items():
+                    for mapped_icd, cause_name in self.icd_to_cause.items():
                         if icd.startswith(mapped_icd.split('.')[0]):
                             matched_cause = cause_name
                             break
@@ -252,44 +289,19 @@ class TemplateFormatter:
                 matching_diagnoses.append((diagnosis, icd, matched_cause))
 
                 # Map cause name to comorbidity column and set to 'YES'
-                cause_to_comorbidity = {
-                    'Coronary Artery Disease': 'CORONARY ARTERY DISEASE',
-                    'Arrhythmia': 'ARRHYTHMIA',
-                    'CHF (Congestive Heart Failure)': 'CONGESTIVE HEART FAILURE',
-                    'Peripheral Vascular Disease': 'PERIPHERAL VASCULAR',
-                    'Valvular Heart Disease': 'VALVULAR HEART',
-                    'Cerebrovascular Accident': 'CEREBROVASCULAR ACCIDENT',
-                    'Hyperlipidemia': 'HYPERLIPIDEMIA',
-                    'Angina Pectoris': 'ANGINA PECTORIS',
-                    'Hypotension': 'HYPOTENSION',
-                    'Hypertension': 'HYPERTENSION',
-                    'Obesity': 'OBESITY',
-                    'Type 2 Diabetes': 'DIABETES',
-                    'Chronic Kidney': 'CHRONIC KIDNEY DISEASE',
-                    'COPD': 'COPD',
-                    'Chronic Bronchitis': 'COPD',  # Chronic Bronchitis maps to COPD
-                    'Respiratory Failure': 'RESPIRATORY FAILURE',
-                    'Asthma': 'ASTHMA',
-                    'Sleep Apnea': 'SLEEP APNEA',
-                    'Dyspnea': 'DYSPNEA',
-                    'Emphysema': 'EMPHYSEMA',
-                    'Emphysema ': 'EMPHYSEMA',  # Handle trailing space
-                    'Bronchiectasis': 'BRONCHIECTASIS',
-                    'Hypoxemia': 'HYPOXEMIA',
-                    'Chronic Hypoxia': 'HYPOXEMIA'  # Map Chronic Hypoxia to HYPOXEMIA
-                }
+                if matched_cause in self.cause_to_comorbidity:
+                    comorbidities[self.cause_to_comorbidity[matched_cause]] = 'YES'
 
-                if matched_cause in cause_to_comorbidity:
-                    comorbidities[cause_to_comorbidity[matched_cause]] = 'YES'
-
-        # Set Primary and Secondary DX/ICD from the first two matching diagnoses
-        if len(matching_diagnoses) >= 1:
-            primary_dx = matching_diagnoses[0][2]  # Use the cause name
-            primary_icd = matching_diagnoses[0][1]  # Use the ICD code
+        # Set Primary and Secondary DX/ICD from the first two YES comorbidities (left to right)
+        yes_conditions = [col for col in self.comorbidity_columns if comorbidities[col] == 'YES']
+        
+        if len(yes_conditions) >= 1:
+            primary_dx = yes_conditions[0]
+            primary_icd = self.column_to_icd.get(primary_dx, '')
             
-        if len(matching_diagnoses) >= 2:
-            secondary_dx = matching_diagnoses[1][2]  # Use the cause name  
-            secondary_icd = matching_diagnoses[1][1]  # Use the ICD code
+        if len(yes_conditions) >= 2:
+            secondary_dx = yes_conditions[1]
+            secondary_icd = self.column_to_icd.get(secondary_dx, '')
 
         return comorbidities, primary_dx, primary_icd, secondary_dx, secondary_icd
 
