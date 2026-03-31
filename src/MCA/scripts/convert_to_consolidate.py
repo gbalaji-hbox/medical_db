@@ -152,7 +152,7 @@ class TemplateFormatter:
         return last_name, first_name, middle_name, full_name_formatted
 
     def _parse_date(self, date_str: str) -> Optional[pd.Timestamp]:
-        """Parse date string from various inconsistent formats and normalize to proper datetime for Excel date formatting."""
+        """Parse date string from various inconsistent formats and normalize to proper date for Excel date formatting."""
         if not date_str or pd.isna(date_str) or str(date_str).strip() == '':
             return None
         
@@ -187,11 +187,11 @@ class TemplateFormatter:
                     raise ValueError("Invalid date range")
                 
                 # Create datetime
-                return pd.Timestamp(year=year, month=month, day=day)
+                return pd.Timestamp(year=year, month=month, day=day).date()
                 
             except (ValueError, IndexError):
                 # If manual parsing fails, try pandas automatic parsing
-                return pd.to_datetime(date_clean)
+                return pd.to_datetime(date_clean).date()
             
         except (ValueError, TypeError):
             # If parsing fails, return None (will be empty in Excel)
@@ -441,6 +441,7 @@ class TemplateFormatter:
             # Find column indices for date columns
             dob_col_idx = self.template_columns.index('DATE OF BIRTH') + 1  # +1 because Excel is 1-indexed
             last_seen_col_idx = self.template_columns.index('LAST SEEN DATE') + 1
+            next_appt_col_idx = self.template_columns.index('NEXT APPT') + 1
             
             # Apply date formatting to the date columns (skip header row)
             for row_idx in range(2, len(output_df) + 2):  # Start from row 2 (after header)
@@ -451,6 +452,11 @@ class TemplateFormatter:
                 
                 # Format LAST SEEN DATE column
                 cell = worksheet.cell(row=row_idx, column=last_seen_col_idx)
+                if cell.value is not None and str(cell.value) != 'NaT' and str(cell.value) != 'nan':
+                    cell.number_format = 'mm-dd-yyyy'
+                
+                # Format NEXT APPT column
+                cell = worksheet.cell(row=row_idx, column=next_appt_col_idx)
                 if cell.value is not None and str(cell.value) != 'NaT' and str(cell.value) != 'nan':
                     cell.number_format = 'mm-dd-yyyy'
 

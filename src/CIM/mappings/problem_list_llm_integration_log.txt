@@ -1,7 +1,0 @@
-LLM integration run
-LLM file: D:\Work_Folder\medical_db\mappings\problem_list_llm_mapping.csv
-Existing mapping: D:\Work_Folder\medical_db\mappings\problem_list_mapping.csv
-Added: 1
-Updated: 0
-[2026-03-20T17:22:04.599438] AI vector mapping generated. Tokens processed: 21723
-[2026-03-20T18:03:29.449215] AI vector mapping generated. Tokens processed: 21723
