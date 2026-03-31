@@ -134,9 +134,12 @@ class TemplateFormatter:
 
     def _parse_patient_name(self, full_name: str) -> Tuple[str, str, str, str]:
         """Parse 'Lastname, Firstname' into components."""
-        if not full_name or ',' not in full_name:
-            return full_name, '', '', '', full_name
-
+        if not full_name:
+            return '', '', '', ''
+        full_name = full_name.strip()
+        if ',' not in full_name:
+            # Assume single word is first name
+            return full_name, '', '', full_name
         last_name, first_part = full_name.split(',', 1)
         last_name = last_name.strip()
         first_part = first_part.strip()

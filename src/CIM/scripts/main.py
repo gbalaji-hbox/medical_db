@@ -174,9 +174,12 @@ class CIMTemplateFormatter:
 
     def _parse_patient_name(self, full_name: str) -> Tuple[str, str, str, str]:
         """Parse full name into components."""
-        if not full_name or ',' not in full_name:
-            return full_name, '', '', '', full_name
-
+        if not full_name:
+            return '', '', '', ''
+        full_name = full_name.strip()
+        if ',' not in full_name:
+            # Assume single word is first name
+            return full_name, '', '', full_name
         # Assuming format: Last, First Middle
         last_name, first_part = full_name.split(',', 1)
         last_name = last_name.strip()
@@ -303,9 +306,9 @@ class CIMTemplateFormatter:
             clinic_facility = str(row.get('Dept/Loc', '')).strip()
             clinic_facility = re.sub(r'\s*\[.*?\]', '', clinic_facility).strip()
 
-            # Parse provider name
-            pcp_val = row.get('PCP', '')
-            provider_name = self._parse_provider_name(str(pcp_val)) if pcp_val and str(pcp_val).lower() != 'nan' else ''
+            # Parse provider name from Encounter Provider
+            encounter_provider = str(row.get('Encounter Provider', ''))
+            provider_name = self._parse_provider_name(encounter_provider) if encounter_provider else ''
 
             # Build row
             row_data = {
@@ -350,7 +353,7 @@ class CIMTemplateFormatter:
                 'SECONDARY ICD': secondary_icd,
                 'LAST SEEN DATE': self._parse_date(str(row.get('Last Visit Date', ''))),
                 'NEXT APPT': self._parse_date(str(row.get('Next Appt', ''))),
-                'PROVIDER DATA': row.get('PCP', ''),
+                'PROVIDER DATA': row.get('Encounter Provider', ''),
                 'PROVIDER NAME': provider_name,
                 'CLINIC FACILITY': clinic_facility,
                 'PRIMARY CARE PROVIDER': row.get('PCP', ''),
