@@ -7,6 +7,7 @@ All operations use raw file I/O without external libraries like pandas.
 
 import os
 import re
+from datetime import datetime
 import csv
 from typing import List, Dict, Tuple, Optional
 
@@ -474,64 +475,151 @@ class PatientsDataCleaner:
         desc = parts[1].strip() if len(parts) > 1 else None
         return icd, desc
 
+    def parse_medication(self, med_text: str) -> Tuple[str, str]:
+        """Parse medication text to extract name and end date."""
+        
+        # Extract date range from brackets
+        date_match = re.search(r'\[([^\]]+)\]', med_text)
+        end_date = ""
+        if date_match:
+            date_range = date_match.group(1).strip()
+            if " - " in date_range:
+                parts = date_range.split(" - ")
+                if len(parts) > 1:
+                    end_date = parts[1].strip()
+        
+        # Extract medication name (everything before the semicolon)
+        med_name = med_text.split(";")[0].strip() if ";" in med_text else med_text.strip()
+        
+        return med_name, end_date
+
     def clean_data(self) -> int:
-        """Clean patients data and return number of records processed."""
-        # Read all Excel data
-        rows = ExcelReader.read_excel_rows(self.input_path, start_row=0)
+        """Clean patients by diagnosis or medication data and return number of records processed."""
 
+        # Read Excel data starting from row 15 (headers at index 14)
+        rows = ExcelReader.read_excel_rows(self.input_path, start_row=15)
+        
         provider_lookup = self._build_provider_lookup()
-
         records = []
-        current_icd = None
-        current_diagnosis = None
-
-        for row in rows:
-            if len(row) < 8:  # Skip incomplete rows
-                continue
-
-            # Check if this is a diagnosis header row (first column has value)
-            diagnosis_cell = row[0].strip() if len(row) > 0 else ""
-            if diagnosis_cell:
-                icd, desc = self.parse_diagnosis(diagnosis_cell)
-                if icd:
-                    current_icd = icd
-                    current_diagnosis = desc
-                continue  # Move to next row after updating diagnosis context
-
-            # Check if this is a patient data row (third column has value)
-            patient_cell = row[2].strip() if len(row) > 2 else ""
-            if patient_cell:
-                # Split patient ID and name (format: "91620/ Moore,Chelcy A")
-                pid_name = patient_cell.split("/", 1)
-                patient_id = pid_name[0].strip() if len(pid_name) > 0 else ""
-                name = pid_name[1].strip() if len(pid_name) > 1 else ""
-
-                visit_date = row[3].strip() if len(row) > 3 else ""
-                address = row[4].strip() if len(row) > 4 else ""
-                phone = row[5].strip() if len(row) > 5 else ""
-                dob = row[6].strip() if len(row) > 6 else ""
-                email = row[7].strip() if len(row) > 7 else ""
-                provider_name = row[8].strip() if len(row) > 8 else ""
-                primary_care_provider = row[9].strip() if len(row) > 9 else ""
-
+        
+        i = 0
+        while i < len(rows):
+            row = rows[i]
+            
+            # Check if this is a patient row (first column contains patient ID/name)
+            patient_cell = row[0].strip() if len(row) > 0 else ""
+            if patient_cell and "/" in patient_cell:
+                # Parse patient info
+                pid_name_parts = patient_cell.split("/", 1)
+                patient_id = pid_name_parts[0].strip() if len(pid_name_parts) > 0 else ""
+                name = pid_name_parts[1].strip() if len(pid_name_parts) > 1 else ""
+                
+                mrn = row[1].strip() if len(row) > 1 else ""
+                address = row[2].strip() if len(row) > 2 else ""
+                phone = row[3].strip() if len(row) > 3 else ""
+                dob = row[4].strip() if len(row) > 4 else ""
+                age = row[5].strip() if len(row) > 5 else ""
+                sex = row[6].strip() if len(row) > 6 else ""
+                
+                # Initialize patient data
+                diagnoses = []
+                medications = []
+                
+                # Move to next row to process diagnoses and medications
+                i += 1
+                
+                # Process subsequent rows until next patient
+                while i < len(rows):
+                    next_row = rows[i]
+                    
+                    # If we hit another patient row, break
+                    if len(next_row) > 0 and next_row[0].strip() and "/" in next_row[0].strip():
+                        i -= 1  # Back up so next iteration processes this patient
+                        break
+                    
+                    # Check second column for diagnosis or medication data
+                    data_cell = next_row[1].strip() if len(next_row) > 1 else ""
+                    
+                    if data_cell:
+                        if data_cell == "Code - Description":
+                            # Skip header row
+                            pass
+                        elif data_cell == "Medication":
+                            # Medication section starts
+                            pass
+                        elif data_cell.startswith("Medication"):
+                            # This might be a medication header, skip
+                            pass
+                        else:
+                            # Check if this is a diagnosis (contains ICD code pattern) or medication
+                            if re.match(r'^[A-Z]\d+\.?\d*\s*-\s*', data_cell):
+                                # This is a diagnosis
+                                icd, desc = self.parse_diagnosis(data_cell)
+                                if icd:
+                                    diagnoses.append(f"{icd} - {desc}")
+                            else:
+                                # This is a medication
+                                med_name, end_date = self.parse_medication(data_cell)
+                                if med_name:
+                                    medications.append({
+                                        'name': med_name,
+                                        'end_date': end_date
+                                    })
+                    
+                    i += 1
+                
+                # Process diagnoses - collect all for comorbidity mapping
+                all_diagnoses = "|".join(diagnoses) if diagnoses else ""
+                all_icds = "|".join([self.parse_diagnosis(d)[0] for d in diagnoses if self.parse_diagnosis(d)[0]]) if diagnoses else ""
+                
+                # For backward compatibility, also set primary diagnosis (first one)
+                primary_diagnosis = ""
+                primary_icd = ""
+                if diagnoses:
+                    icd, desc = self.parse_diagnosis(diagnoses[0])
+                    primary_diagnosis = desc or diagnoses[0]
+                    primary_icd = icd or ""
+                
+                # Process medications - find the latest active one
+                latest_medication = ""
+                if medications:
+                    # Sort by end date (empty end dates = active, so they come last)
+                    def sort_key(med):
+                        end_date = med['end_date']
+                        if not end_date:
+                            return "9999-12-31"  # Active meds sort last
+                        try:
+                            return datetime.strptime(end_date, "%m/%d/%Y").strftime("%Y-%m-%d")
+                        except ValueError:
+                            return "0000-00-00"  # Invalid dates sort first
+                    
+                    sorted_meds = sorted(medications, key=sort_key)
+                    latest_medication = sorted_meds[-1]['name']  # Last one is most recent active
+                
+                # Get provider data
                 provider_key = f"{self.text_cleaner.normalize_name_key(name)}|{self.text_cleaner.normalize_date_key(dob)}"
                 provider_data = provider_lookup.get(provider_key, "")
-
+                
                 records.append({
                     "patient_id": patient_id,
                     "name": self.text_cleaner.clean_text(name),
                     "address": self.text_cleaner.clean_text(address),
                     "phone": self.text_cleaner.normalize_phone(phone),
                     "dob": dob,
-                    "email": email,
-                    "last_visit_date": visit_date,
-                    "diagnosis": current_diagnosis or "",
-                    "icd_code": current_icd or "",
+                    "email": "",  # No email in this format
+                    "last_visit_date": "",  # No visit date in this format
+                    "diagnosis": primary_diagnosis,
+                    "icd_code": primary_icd,
+                    "all_diagnoses": all_diagnoses,
+                    "all_icds": all_icds,
+                    "medication": latest_medication,
                     "provider_data": provider_data,
-                    "provider_name": provider_name,
-                    "primary_care_provider": primary_care_provider
+                    "provider_name": "",  # No provider name in this format
+                    "primary_care_provider": ""  # No primary care provider in this format
                 })
-
+            else:
+                i += 1
+        
         # Write to CSV
         self._write_csv(records)
         return len(records)
@@ -542,7 +630,7 @@ class PatientsDataCleaner:
 
         fieldnames = [
             "patient_id", "name", "address", "phone", "dob", "email",
-            "last_visit_date", "diagnosis", "icd_code", "provider_data", "provider_name", "primary_care_provider"
+            "last_visit_date", "diagnosis", "icd_code", "all_diagnoses", "all_icds", "medication", "provider_data", "provider_name", "primary_care_provider"
         ]
 
         with open(self.output_path, 'w', newline='', encoding='utf-8-sig') as csvfile:

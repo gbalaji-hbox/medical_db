@@ -129,28 +129,44 @@ def format_date(date_str: str):
     if pd.isna(date_str) or not date_str:
         return None
     try:
-        dt = pd.to_datetime(date_str)
+        dt = pd.to_datetime(date_str, format='%d-%m-%Y')
         return dt.to_pydatetime()
     except:
         return None
 
-def map_comorbidities(icds: List[str], prefix_to_cause: Dict[str, str]) -> tuple[Dict[str, str], bool]:
-    """Map ICD codes to causes using prefix matching, then to comorbidity flags."""
+def map_comorbidities(icds: List[str], prefix_to_cause: Dict[str, str]) -> tuple[Dict[str, str], bool, Dict[str, str]]:
+    """Map ICD codes to causes using prefix matching, then to comorbidity flags.
+    
+    Returns:
+    - comorbidity flags dict
+    - has_match boolean
+    - comorbidity_to_raw_icd dict mapping comorbidity names to raw ICD codes
+    """
     causes = set()
     has_match = False
+    comorbidity_to_raw_icd = {}
+    
     for icd in icds:
         icd = str(icd).strip()
         if not icd:
             continue
         icd_prefix = icd[:3] if len(icd) >= 3 else icd
         if icd_prefix in prefix_to_cause:
-            causes.add(prefix_to_cause[icd_prefix])
+            cause = prefix_to_cause[icd_prefix]
+            causes.add(cause)
             has_match = True
+            # Map cause to comorbidity and store the raw ICD
+            if cause in CAUSE_TO_COMORBIDITY:
+                comorbidity = CAUSE_TO_COMORBIDITY[cause]
+                if comorbidity not in comorbidity_to_raw_icd:
+                    comorbidity_to_raw_icd[comorbidity] = icd
+    
     flags = {col: 'NO' for col in COMORBIDITY_COLUMNS}
     for cause in causes:
         if cause in CAUSE_TO_COMORBIDITY:
             flags[CAUSE_TO_COMORBIDITY[cause]] = 'YES'
-    return flags, has_match
+    
+    return flags, has_match, comorbidity_to_raw_icd
 
 def get_recent_medication(med_df: pd.DataFrame, chart_id: str) -> str:
     """Get most recent active medication for a patient."""
@@ -236,7 +252,7 @@ def main():
             continue
         
         icds = row.get('ICD10 Code', [])
-        comorbidities, has_icd_match = map_comorbidities(icds, prefix_to_cause)
+        comorbidities, has_icd_match, comorbidity_to_raw_icd = map_comorbidities(icds, prefix_to_cause)
         recent_med = get_recent_medication(med_df, row['Chart ID'])
 
         # Primary and secondary dx: left-to-right comorbidity strategy
@@ -248,15 +264,17 @@ def main():
         if true_comorbidities:
             primary_comorb = true_comorbidities[0]
             primary_dx = primary_comorb  # Use the column header as DX
-            # Find ICD from prescription mapping for primary dx
-            cause = COMORBIDITY_TO_CAUSE.get(primary_comorb, '')
-            primary_icd = next((icd for icd, c in icd_to_cause.items() if c == cause), '')
+            # Use raw ICD code that matched to this comorbidity
+            primary_icd = comorbidity_to_raw_icd.get(primary_comorb, '')
+            
             if len(true_comorbidities) > 1:
                 secondary_comorb = true_comorbidities[1]
                 secondary_dx = secondary_comorb  # Use the column header as DX
-                # Find ICD from prescription mapping for secondary dx
-                cause_sec = COMORBIDITY_TO_CAUSE.get(secondary_comorb, '')
-                secondary_icd = next((icd for icd, c in icd_to_cause.items() if c == cause_sec), '')
+                # Use raw ICD code that matched to this comorbidity
+                secondary_icd = comorbidity_to_raw_icd.get(secondary_comorb, '')
+
+        # Handle clinic facility name - take only the part before the first comma
+        clinic_facility = str(row['Practice Official Name']).split(',')[0].strip()
 
         output_row = {
             'EMR ID': row['Chart ID'],
@@ -274,14 +292,14 @@ def main():
             'HOME PHONE': row['Home Phone'],
             'MOBILE PHONE': row['Cell Phone'],
             'WORK PHONE': row['Office Phone'],
-            'EMAIL ADDRESS': row['Email'],
-            'LANGUAGE': '',
+            'EMAIL ADDRESS': row['Email'].lower() if pd.notna(row['Email']) else '',
+            'LANGUAGE': 'English',
             'RACE': row['Race'],
             'EMERGENCY CONTACT NAME': row['Emerg Contact Name'],
             'EMERGENCY RELATIONSHIP': row['Emerg Contact Relation'],
             'EMERGENCY CONTACT HOME PHONE': row['Emerg Contact Phone'],
             'EMERGENCY CONTACT MOBILE PHONE': '',
-            'MEDICARE ID': '',
+            'MEDICARE ID': row['Primary Member ID'] if classify_insurance(row['Primary Ins Payer']) == 'medicare' else '',
             'PRIMARY INSURANCE': row['Primary Ins Payer'],
             'PRIMARY ID': row['Primary Member ID'],
             'PRIMARY GROUP': row['Primary Ins Group #'],
@@ -302,7 +320,7 @@ def main():
             'NEXT APPT': format_date(row['Date of Next Appointment']),
             'PROVIDER DATA': row['Provider'],
             'PROVIDER NAME': row['Primary Provider'],
-            'CLINIC FACILITY': row['Practice Official Name'],
+            'CLINIC FACILITY': clinic_facility,
             'PRIMARY CARE PROVIDER': row['Primary Care Physician'],
             'MEDICATIONS': recent_med,
             'ENCOUNTER NOTES': row['Appointment Notes'],

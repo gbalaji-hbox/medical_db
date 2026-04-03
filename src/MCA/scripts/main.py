@@ -114,7 +114,7 @@ def main():
     # Input files - ensure they are in XLSX format
     insurance_excel = ensure_xlsx_format(base_dir / "Patients by Insurance.xlsx")
     visits_excel = ensure_xlsx_format(base_dir / "Patients With Visits By Insurance.xlsx")
-    patients_excel = ensure_xlsx_format(base_dir / "Patients by Diagnosis.xlsx")
+    patients_excel = ensure_xlsx_format(base_dir / "Patients by Diagnosis or Medication.xlsx")
 
     # Handle patient-list file (check for .xls first, then .xlsx)
     patient_list_xls = base_dir / "patient-list.xls"
@@ -183,14 +183,14 @@ def main():
         print(f"✓ Insurance data cleaned: {insurance_count} records\n")
 
         # Step 2: Clean patients by diagnosis data
-        print("Step 2: Cleaning patients by diagnosis data...")
+        print("Step 2: Cleaning patients by diagnosis or medication data...")
         patients_cleaner = PatientsDataCleaner(
             str(patients_excel),
             str(cleaned_patients_csv),
             str(service_by_provider_excel) if service_by_provider_excel else None
         )
         patients_count = patients_cleaner.clean_data()
-        print(f"✓ Patients by diagnosis data cleaned: {patients_count} records\n")
+        print(f"✓ Patients by diagnosis or medication data cleaned: {patients_count} records\n")
 
         # Step 3: Clean visits data and merge with insurance
         print("Step 3: Cleaning visits data and merging with insurance...")

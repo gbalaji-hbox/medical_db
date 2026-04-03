@@ -1,0 +1,27 @@
+id,cause,icd_code,active,notes,universal,created,updated,health_care_center_id,suggested_vitals
+11,Asthma,J45.2,true,Added on Oct 4 2022,true,"Oct 4, 2022, 7:42 PM","Oct 4, 2022, 7:43 PM",,O2
+18,Bronchiectasis,J47.9,true,,true,"Dec 8, 2022, 6:31 PM","Dec 8, 2022, 6:31 PM",,O2
+26,Coronary Artery Disease,I25,true,Added on 11th April 2024,true,"Apr 11, 2024, 12:57 AM","Apr 11, 2024, 12:57 AM",,BP
+27,Arrhythmia,I49,true,Added on 29th April 2024,true,"Apr 29, 2024, 12:57 AM","Apr 29, 2024, 12:57 AM",,BP
+1,Hypertension or Pre Hypertensive,I10,true,Default,true,"Mar 9, 2022, 8:11 PM","Mar 9, 2022, 8:11 PM",,BP
+2,Obesity,E66,true,Default,true,"Mar 9, 2022, 8:11 PM","Mar 9, 2022, 8:11 PM",,WT
+4,COPD,J44.9,true,Default,true,"Mar 9, 2022, 8:11 PM","Mar 9, 2022, 8:11 PM",,O2
+25,Sleep Apnea,G47.3,true,Added on 29-03-2024,true,"Mar 29, 2024, 2:25 AM","Mar 29, 2024, 2:25 AM",,WT
+29,Peripheral Vascular Disease,I73,true,Added on 20th Aug 2024,true,"Aug 19, 2024, 10:58 PM","Aug 19, 2024, 10:58 PM",,BP
+30,Cerebrovascular Accident,I63,true,Added on 20th Aug 2024 | Oct 8th 2024: Changed Heart Stroke to Cerebrovascular Accident,true,"Aug 19, 2024, 10:58 PM","Oct 7, 2024, 10:47 PM",,BP
+31,Valvular Heart Disease,I35,true,Added on 16th Dec 2024,true,"Dec 16, 2024, 7:57 AM","Dec 16, 2024, 7:57 AM",,BP
+32,Angina Pectoris,I20,true,Added on 6th Jan 2025,true,"Jan 5, 2025, 10:36 PM","Jan 5, 2025, 10:36 PM",,BP
+28,Hyperlipidemia,E78.5,true,"Added on 28th May 2024, Updated to E78.5 on 2nd May 2025",true,"May 27, 2024, 11:18 PM","May 27, 2024, 11:18 PM",,BP
+20,Emphysema ,J43.9,true,Added on 27 Sep 2023,true,"Sep 26, 2023, 9:43 PM","Sep 26, 2023, 9:43 PM",,O2
+7,Pulmonary Fibrosis,J84.10,true,Default,true,"Mar 9, 2022, 8:11 PM","Mar 9, 2022, 8:11 PM",,O2
+13,Pleural Effusion,J90.0,true,,true,"Dec 8, 2022, 6:28 PM","Dec 8, 2022, 6:28 PM",,O2
+6,Hypoxemia,R09.02,true,Default,true,"Mar 9, 2022, 8:11 PM","Mar 9, 2022, 8:11 PM",,O2
+9,CHF (Congestive Heart Failure),I50,true,Default,true,"Mar 9, 2022, 8:11 PM","Mar 9, 2022, 8:11 PM",,"BP,WT"
+12,Chronic Hypoxia,R09.02,true,,true,"Oct 10, 2022, 10:51 AM","Oct 12, 2022, 8:30 PM",,O2
+15,Interstitial Lung Disease,J84.9,true,,true,"Dec 8, 2022, 6:30 PM","Dec 8, 2022, 6:30 PM",,O2
+19,Hypotension,I95,true,,true,"Apr 11, 2023, 4:44 PM","Apr 11, 2023, 4:44 PM",,BP
+24,Dyspnea,R06.09,true,Added on 29-03-2024,true,"Mar 29, 2024, 2:25 AM","Mar 29, 2024, 2:25 AM",,O2
+23,Chronic Kidney,N18,true,Added on 29-03-2024,true,"Mar 29, 2024, 2:25 AM","Mar 29, 2024, 2:25 AM",,BP
+10,Type 2 Diabetes,E11.2,true,Default,true,"Mar 9, 2022, 8:11 PM","Mar 9, 2022, 8:11 PM",,BG
+21,Respiratory Failure,J96.1,true,Added on 27 Sep 2023,true,"Sep 26, 2023, 9:43 PM","Sep 26, 2023, 9:43 PM",,O2
+22,Chronic Bronchitis,J42,true,Added on 27 Sep 2023,true,"Sep 26, 2023, 9:43 PM","Sep 26, 2023, 9:43 PM",,O2

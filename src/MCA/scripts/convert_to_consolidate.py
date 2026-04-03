@@ -240,7 +240,7 @@ class TemplateFormatter:
 
         Processes ALL diagnoses to set comprehensive comorbidity flags.
         Returns the first two matching diagnoses as Primary and Secondary.
-        Only assigns comorbidity flags and DX when there's a clear match with the API prescription list.
+        Uses source sheet ICD codes for PRIMARY ICD and SECONDARY ICD when they match API prescription list.
         """
         comorbidities = {}
         primary_dx = ''
@@ -296,15 +296,31 @@ class TemplateFormatter:
                     comorbidities[self.cause_to_comorbidity[matched_cause]] = 'YES'
 
         # Set Primary and Secondary DX/ICD from the first two YES comorbidities (left to right)
+        # PRIMARY DX/SECONDARY DX = comorbidity column name (e.g., "CORONARY ARTERY DISEASE")
+        # PRIMARY ICD/SECONDARY ICD = raw sheet ICD code that matched to that comorbidity
         yes_conditions = [col for col in self.comorbidity_columns if comorbidities[col] == 'YES']
         
+        primary_dx = ''
+        primary_icd = ''
+        secondary_dx = ''
+        secondary_icd = ''
+        
+        # Find the raw sheet ICD codes that matched to the YES comorbidities
+        comorbidity_to_raw_icd = {}
+        for diagnosis, icd, cause in matching_diagnoses:
+            if cause in self.cause_to_comorbidity:
+                comorbidity = self.cause_to_comorbidity[cause]
+                if comorbidity not in comorbidity_to_raw_icd:
+                    comorbidity_to_raw_icd[comorbidity] = icd
+        
+        # Assign primary and secondary based on YES conditions order
         if len(yes_conditions) >= 1:
             primary_dx = yes_conditions[0]
-            primary_icd = self.column_to_icd.get(primary_dx, '')
+            primary_icd = comorbidity_to_raw_icd.get(yes_conditions[0], '')
             
         if len(yes_conditions) >= 2:
             secondary_dx = yes_conditions[1]
-            secondary_icd = self.column_to_icd.get(secondary_dx, '')
+            secondary_icd = comorbidity_to_raw_icd.get(yes_conditions[1], '')
 
         return comorbidities, primary_dx, primary_icd, secondary_dx, secondary_icd
 
@@ -379,7 +395,7 @@ class TemplateFormatter:
                 'EMERGENCY RELATIONSHIP': '',  # Not available
                 'EMERGENCY CONTACT HOME PHONE': row.get('emergency_contact_number', ''),
                 'EMERGENCY CONTACT MOBILE PHONE': '',  # Not available
-                'MEDICARE ID': '',  # Not available
+                'MEDICARE ID': row.get('member_id_p', '') if insurance_type == 'medicare' else '',
                 'PRIMARY INSURANCE': row.get('payer_name_p', ''),
                 'PRIMARY ID': row.get('member_id_p', ''),
                 'PRIMARY GROUP': '',  # Leave blank as requested
@@ -424,7 +440,7 @@ class TemplateFormatter:
                 'PROVIDER NAME': provider_name,
                 'CLINIC FACILITY': 'Midwest Cardiology',  # Default clinic
                 'PRIMARY CARE PROVIDER': provider_name,  # Same as provider name
-                'MEDICATIONS': '',  # Not available
+                'MEDICATIONS': row.get('medication', ''),
                 'ENCOUNTER NOTES': ''  # Not available
             }
 
