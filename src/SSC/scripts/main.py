@@ -142,6 +142,18 @@ def format_date(date_str: str):
     except:
         return None
 
+def parse_provider_name(full_name: str) -> str:
+    """Parse provider name from 'Last, First' to 'First Last'."""
+    if pd.isna(full_name):
+        return ''
+    parts = str(full_name).strip().split(',')
+    if len(parts) == 2:
+        last = parts[0].strip()
+        first = parts[1].strip()
+        return f"{first} {last}"
+    else:
+        return str(full_name).strip()
+
 def map_comorbidities(icds: List[str], prefix_to_cause: Dict[str, str]) -> tuple[Dict[str, str], bool, Dict[str, str]]:
     """Map ICD codes to causes using prefix matching, then to comorbidity flags.
     
@@ -311,7 +323,7 @@ def main():
             'LAST SEEN DATE': format_date(row['patientlastseend']),
             'NEXT APPT': format_date(row['patientnextappt']),
             'PROVIDER DATA': row['prim prvdrfullnme'],
-            'PROVIDER NAME': row['prim prvdrfullnme'],
+            'PROVIDER NAME': parse_provider_name(row['prim prvdrfullnme']),
             'CLINIC FACILITY': row['reg dprtmnt'],
             'PRIMARY CARE PROVIDER': row['patientinspcprvdr'],
             'MEDICATIONS': consolidated_med,
