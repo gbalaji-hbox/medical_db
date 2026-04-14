@@ -215,16 +215,40 @@ def run_pipeline(base_dir: Path) -> tuple[Path, Path]:
 
     log(f"Rows after dedupe - demographics: {len(dem_df)}, insurance: {len(ins_df)}, icd: {len(icd_df)}")
 
-    final_df = dem_df.copy()
-
-    final_df = final_df.set_index("EMR ID", drop=False)
+    dem_df = dem_df.set_index("EMR ID", drop=False)
     ins_df = ins_df.set_index("EMR ID", drop=False)
     icd_df = icd_df.set_index("EMR ID", drop=False)
+
+    insurance_with_primary = ins_df
+    if "PRIMARY INSURANCE" in insurance_with_primary.columns:
+        insurance_with_primary = insurance_with_primary[
+            insurance_with_primary["PRIMARY INSURANCE"].map(clean_text) != ""
+        ]
+
+    icd_with_primary_dx = icd_df
+    if "PRIMARY DX" in icd_with_primary_dx.columns:
+        icd_with_primary_dx = icd_with_primary_dx[
+            icd_with_primary_dx["PRIMARY DX"].map(clean_text) != ""
+        ]
+
+    matching_ids = dem_df.index.intersection(insurance_with_primary.index).intersection(icd_with_primary_dx.index)
+    final_df = dem_df.loc[matching_ids].copy()
+
+    log(
+        "Matched rows after strict key filter "
+        f"(demographics + primary insurance + primary dx): {len(final_df)}"
+    )
 
     log("Merging insurance into demographics")
     final_df = fill_without_overwrite(final_df, ins_df, INSURANCE_COLUMNS)
     log("Merging ICD into demographics")
     final_df = fill_without_overwrite(final_df, icd_df, ICD_COLUMNS)
+
+    # Safety filter: keep only complete rows even if source format changes.
+    if "PRIMARY INSURANCE" in final_df.columns:
+        final_df = final_df[final_df["PRIMARY INSURANCE"].map(clean_text) != ""]
+    if "PRIMARY DX" in final_df.columns:
+        final_df = final_df[final_df["PRIMARY DX"].map(clean_text) != ""]
 
     final_df = final_df.reset_index(drop=True)
 
