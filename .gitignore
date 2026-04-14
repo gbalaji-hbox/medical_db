@@ -72,3 +72,4 @@ mappings/*.bak
 # Keep template and disease data tracked
 !template/
 !disease/
+src/HCT/bak
