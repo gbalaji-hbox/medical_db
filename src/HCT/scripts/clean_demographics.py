@@ -94,8 +94,13 @@ def format_date_mm_dd_yyyy(value: object) -> str:
 
 
 def build_street_address(addr2: object, addr1: object) -> str:
-    # Required order from user: Addr 2 + Addr 1
-    return " ".join(part for part in [clean_text(addr2), clean_text(addr1)] if part)
+    # Required order from user: Addr 2 + Addr 1, separated by comma.
+    # Skip addr2 if it is already a substring of addr1 (case-insensitive).
+    a2 = clean_text(addr2)
+    a1 = clean_text(addr1)
+    if a2 and a1 and a2.lower() in a1.lower():
+        return a1
+    return ", ".join(part for part in [a2, a1] if part)
 
 
 def normalize_location(value: object) -> str:
