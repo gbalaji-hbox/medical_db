@@ -1,9 +1,11 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
-# --- Pipeline job models ---
+# ---------------------------------------------------------------------------
+# Pipeline job models
+# ---------------------------------------------------------------------------
 
 class JobCreated(BaseModel):
     job_id: str
@@ -25,11 +27,17 @@ class JobStatus(BaseModel):
     submitted_by: Optional[str] = None
 
 
-# --- Auth models ---
+# ---------------------------------------------------------------------------
+# Auth models
+# ---------------------------------------------------------------------------
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
+    username: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=1)
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
 
 
 class Token(BaseModel):
@@ -40,7 +48,7 @@ class Token(BaseModel):
 
 
 class ApiKeyRequest(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1)
     role: str = "user"
 
 
@@ -58,5 +66,5 @@ class ApiKeyInfo(BaseModel):
     created_by: str
     created_at: float
     last_used_at: Optional[float] = None
-    is_active: int
+    is_active: bool
     role: str

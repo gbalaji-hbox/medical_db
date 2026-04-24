@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(.venv/Scripts/python -c ' *)",
+      "Bash(.venv/Scripts/pip install *)",
+      "Bash(.venv/Scripts/pytest tests/unit/ -v)",
+      "Bash(.venv/Scripts/pytest tests/unit/ -q)",
+      "Bash(.venv/Scripts/pytest tests/unit/)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}

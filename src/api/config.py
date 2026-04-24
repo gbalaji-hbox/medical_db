@@ -1,5 +1,6 @@
 import os
 import sys
+import warnings
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -10,35 +11,80 @@ load_dotenv(PROJECT_ROOT / ".creds" / ".env", override=False)
 # Use the running interpreter — works on Windows venv and Docker Linux
 PYTHON_EXE = sys.executable
 
-# JWT
+# ---------------------------------------------------------------------------
+# Auth
+# ---------------------------------------------------------------------------
+
 JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY", "CHANGE_ME_IN_PRODUCTION")
 JWT_ALGORITHM = "HS256"
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES = 30
 JWT_REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-# Fernet encryption key file — auto-generated on first startup, persisted here.
-# In Docker this resolves to /data/encryption.key (same bind-mount volume as the DB).
-# Override path with ENCRYPTION_KEY_FILE env var if needed.
-KEY_FILE = Path(os.environ.get(
-    "ENCRYPTION_KEY_FILE",
-    str(Path(os.environ.get("DB_PATH", str(PROJECT_ROOT / ".api_data.db"))).parent / "encryption.key"),
-))
+if JWT_SECRET_KEY == "CHANGE_ME_IN_PRODUCTION":
+    warnings.warn(
+        "JWT_SECRET_KEY is using the insecure default value. "
+        "Set the JWT_SECRET_KEY environment variable before deploying.",
+        stacklevel=1,
+    )
 
-# Rate limiting (applied globally via middleware)
+# ---------------------------------------------------------------------------
+# CORS
+# ---------------------------------------------------------------------------
+
+_cors_raw = os.environ.get("CORS_ORIGINS", "")
+CORS_ORIGINS: list[str] = (
+    [o.strip() for o in _cors_raw.split(",") if o.strip()] if _cors_raw else ["*"]
+)
+
+# ---------------------------------------------------------------------------
+# Encryption
+# ---------------------------------------------------------------------------
+
+# Key file path for Fernet encryption. Auto-generated on first boot.
+# In Docker this resolves to /data/encryption.key (same volume as DB).
+KEY_FILE = Path(
+    os.environ.get(
+        "ENCRYPTION_KEY_FILE",
+        str(
+            Path(os.environ.get("DB_PATH", str(PROJECT_ROOT / ".api_data.db"))).parent
+            / "encryption.key"
+        ),
+    )
+)
+
+# ---------------------------------------------------------------------------
+# Rate limiting
+# ---------------------------------------------------------------------------
+
 RATE_LIMIT_DEFAULT = "10/minute"
 
-# File upload constraints
+# ---------------------------------------------------------------------------
+# File upload
+# ---------------------------------------------------------------------------
+
 MAX_UPLOAD_BYTES = 50 * 1024 * 1024  # 50 MB
 ALLOWED_EXTENSIONS = {".xlsx", ".xls", ".csv"}
 
-# Output file retention per module (keep N most recent)
-OUTPUT_RETENTION_COUNT = 5
+# ---------------------------------------------------------------------------
+# Output retention & job lifecycle
+# ---------------------------------------------------------------------------
 
-# SQLite DB path (bind-mount in Docker to persist across restarts)
+OUTPUT_RETENTION_COUNT = 5
+JOB_TTL_SECONDS = 3600
+SUBPROCESS_TIMEOUT = 1800  # 30 min per pipeline
+
+# ---------------------------------------------------------------------------
+# Database
+# ---------------------------------------------------------------------------
+
 DB_PATH = Path(os.environ.get("DB_PATH", str(PROJECT_ROOT / ".api_data.db")))
 
-# Root path used by SSC and XHI scripts (hardcoded in their source).
-# On Docker/Linux set MEDICAL_DB_ROOT=/app; on Windows defaults to original path.
+# ---------------------------------------------------------------------------
+# Module paths
+# ---------------------------------------------------------------------------
+
+# Root path used by SSC and XHI scripts (also hardcoded in their source).
+# Set MEDICAL_DB_ROOT=/app on Docker/Linux; defaults to Windows dev path.
 MEDICAL_DB_ROOT = os.environ.get("MEDICAL_DB_ROOT", r"D:\Work_Folder\medical_db")
 
 MODULE_SCRIPT = {
@@ -86,7 +132,7 @@ MODULE_EXTRA_ARGS = {
     "xhi": [],
 }
 
-# Input files to delete after a successful pipeline run (data files only, not templates)
+# Input files deleted after a successful pipeline run (never touches templates)
 MODULE_INPUT_FILES = {
     "mca": [
         "Patients by Insurance.xlsx",
@@ -116,6 +162,3 @@ MODULE_INPUT_FILES = {
         "problem_report.csv",
     ],
 }
-
-JOB_TTL_SECONDS = 3600
-SUBPROCESS_TIMEOUT = 1800

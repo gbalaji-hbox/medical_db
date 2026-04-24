@@ -1,13 +1,13 @@
 """
-Authentication: JWT (Bearer token) + API key (X-Api-Key header).
-Either method is accepted on all protected endpoints.
+Authentication: JWT Bearer token + API key (X-Api-Key header).
+Either method grants access to protected endpoints.
 
 Routes:
   POST /api/auth/login           — username/password → access + refresh tokens
   POST /api/auth/refresh         — refresh token → new access token
-  POST /api/auth/keys            — (admin) create API key
-  GET  /api/auth/keys            — (admin) list API keys
-  DELETE /api/auth/keys/{key_id} — (admin) revoke API key
+  POST /api/auth/keys            — (admin) create named API key
+  GET  /api/auth/keys            — (admin) list all API keys
+  DELETE /api/auth/keys/{key_id} — (admin) revoke an API key
 """
 
 import hashlib
@@ -27,12 +27,13 @@ from src.api.config import (
     JWT_REFRESH_TOKEN_EXPIRE_DAYS,
     JWT_SECRET_KEY,
 )
-from src.api.db import get_conn, get_db
+from src.api.db import get_conn
 from src.api.models import (
     ApiKeyCreated,
     ApiKeyInfo,
     ApiKeyRequest,
     LoginRequest,
+    RefreshRequest,
     Token,
 )
 
@@ -43,7 +44,7 @@ _api_key_header = APIKeyHeader(name="X-Api-Key", auto_error=False, scheme_name="
 
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Password & token helpers
 # ---------------------------------------------------------------------------
 
 
@@ -60,7 +61,8 @@ def _hash_api_key(key: str) -> str:
 
 
 def _make_token(data: dict, expire_seconds: int) -> str:
-    payload = {**data, "exp": time.time() + expire_seconds, "iat": time.time()}
+    now = time.time()
+    payload = {**data, "iat": now, "exp": now + expire_seconds}
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 
@@ -82,29 +84,24 @@ async def get_current_identity(
     api_key: Optional[str] = Security(_api_key_header),
 ) -> dict:
     """
+    Validates JWT Bearer token or X-Api-Key header.
     Returns {"type": "jwt"|"api_key", "username": str, "role": str}.
     Raises 401 if neither credential is valid.
     """
     conn = get_conn()
 
-    # --- Try JWT Bearer token ---
     if creds and creds.scheme.lower() == "bearer":
         payload = _decode_token(creds.credentials)
         if payload and payload.get("type") == "access":
-            user = conn.execute(
+            row = conn.execute(
                 "SELECT role, is_active FROM users WHERE username = ?",
                 (payload["sub"],),
             ).fetchone()
-            if user and user["is_active"]:
-                identity = {
-                    "type": "jwt",
-                    "username": payload["sub"],
-                    "role": user["role"],
-                }
+            if row and row["is_active"]:
+                identity = {"type": "jwt", "username": payload["sub"], "role": row["role"]}
                 request.state.identity = identity
                 return identity
 
-    # --- Try API key ---
     if api_key:
         key_hash = _hash_api_key(api_key)
         record = conn.execute(
@@ -117,11 +114,7 @@ async def get_current_identity(
                 (time.time(), record["key_id"]),
             )
             conn.commit()
-            identity = {
-                "type": "api_key",
-                "username": record["name"],
-                "role": record["role"],
-            }
+            identity = {"type": "api_key", "username": record["name"], "role": record["role"]}
             request.state.identity = identity
             return identity
 
@@ -144,7 +137,7 @@ def require_admin(identity: dict = Depends(get_current_identity)) -> dict:
 
 
 @router.post("/login", response_model=Token, summary="Login with username and password")
-def login(body: LoginRequest):
+def login(body: LoginRequest) -> Token:
     conn = get_conn()
     row = conn.execute(
         "SELECT hashed_password, role, is_active FROM users WHERE username = ?",
@@ -169,17 +162,15 @@ def login(body: LoginRequest):
     )
 
 
-@router.post("/refresh", response_model=Token, summary="Refresh access token")
-def refresh_token(body: dict):
-    token = body.get("refresh_token", "")
-    payload = _decode_token(token)
+@router.post("/refresh", response_model=Token, summary="Exchange refresh token for new access token")
+def refresh_token(body: RefreshRequest) -> Token:
+    payload = _decode_token(body.refresh_token)
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
     conn = get_conn()
     row = conn.execute(
-        "SELECT role, is_active FROM users WHERE username = ?",
-        (payload["sub"],),
+        "SELECT role, is_active FROM users WHERE username = ?", (payload["sub"],)
     ).fetchone()
     if not row or not row["is_active"]:
         raise HTTPException(status_code=401, detail="User not found or disabled")
@@ -201,14 +192,13 @@ def refresh_token(body: dict):
 
 
 @router.post("/keys", response_model=ApiKeyCreated, summary="Create API key (admin only)")
-def create_api_key(body: ApiKeyRequest, identity: dict = Depends(require_admin)):
+def create_api_key(body: ApiKeyRequest, identity: dict = Depends(require_admin)) -> ApiKeyCreated:
     raw_key = secrets.token_urlsafe(32)
-    key_hash = _hash_api_key(raw_key)
     key_id = str(uuid.uuid4())
     conn = get_conn()
     conn.execute(
         "INSERT INTO api_keys (key_id, key_hash, name, created_by, created_at, role) VALUES (?,?,?,?,?,?)",
-        (key_id, key_hash, body.name, identity["username"], time.time(), body.role),
+        (key_id, _hash_api_key(raw_key), body.name, identity["username"], time.time(), body.role),
     )
     conn.commit()
     return ApiKeyCreated(
@@ -221,21 +211,20 @@ def create_api_key(body: ApiKeyRequest, identity: dict = Depends(require_admin))
 
 
 @router.get("/keys", response_model=list[ApiKeyInfo], summary="List API keys (admin only)")
-def list_api_keys(identity: dict = Depends(require_admin)):
-    conn = get_conn()
-    rows = conn.execute(
-        "SELECT key_id, name, created_by, created_at, last_used_at, is_active, role FROM api_keys ORDER BY created_at DESC"
+def list_api_keys(identity: dict = Depends(require_admin)) -> list[ApiKeyInfo]:
+    rows = get_conn().execute(
+        "SELECT key_id, name, created_by, created_at, last_used_at, is_active, role "
+        "FROM api_keys ORDER BY created_at DESC"
     ).fetchall()
     return [ApiKeyInfo(**dict(r)) for r in rows]
 
 
 @router.delete("/keys/{key_id}", summary="Revoke API key (admin only)")
-def revoke_api_key(key_id: str, identity: dict = Depends(require_admin)):
-    conn = get_conn()
-    result = conn.execute(
+def revoke_api_key(key_id: str, identity: dict = Depends(require_admin)) -> dict:
+    result = get_conn().execute(
         "UPDATE api_keys SET is_active = 0 WHERE key_id = ?", (key_id,)
     )
-    conn.commit()
+    get_conn().commit()
     if result.rowcount == 0:
         raise HTTPException(status_code=404, detail="Key not found")
     return {"message": f"Key {key_id} revoked"}

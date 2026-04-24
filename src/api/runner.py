@@ -4,6 +4,7 @@ captures output, applies PHI scrubbing, encrypts the output file,
 enforces retention policy, and cleans up input files.
 """
 
+import os
 import subprocess
 import threading
 import time
@@ -30,27 +31,36 @@ from src.api.retention import cleanup_inputs, enforce_output_retention
 # Critical for SSC/XHI which have hardcoded input file paths.
 _module_locks: dict[str, threading.Lock] = {m: threading.Lock() for m in MODULE_SCRIPT}
 
+# Whitelist of env vars passed to subprocess — never leak full os.environ secrets
+_SUBPROCESS_ENV_KEYS = {
+    "PATH", "SYSTEMROOT", "TEMP", "TMP", "HOME", "LANG", "LC_ALL",
+    "PYTHONPATH", "VIRTUAL_ENV",
+}
+
+
+def _build_env() -> dict[str, str]:
+    """Build a minimal env for subprocess: whitelisted vars + MEDICAL_DB_ROOT."""
+    env = {k: v for k, v in os.environ.items() if k in _SUBPROCESS_ENV_KEYS}
+    env["MEDICAL_DB_ROOT"] = MEDICAL_DB_ROOT
+    return env
+
 
 def find_latest_output(module: str, after: float) -> Optional[str]:
-    """Return the path of the newest output file created after `after`."""
+    """Return the path of the newest output file created at or after `after`."""
     output_dir = MODULE_OUTPUT_DIR[module]
     pattern = OUTPUT_GLOB[module]
-    files = [p for p in output_dir.glob(pattern) if p.stat().st_mtime >= after]
-    if not files:
-        # Fall back to absolute latest (mtime rounding on some filesystems)
+    candidates = [p for p in output_dir.glob(pattern) if p.stat().st_mtime >= after]
+    if not candidates:
+        # Fallback: absolute latest (handles filesystem mtime rounding)
         all_files = sorted(output_dir.glob(pattern), key=lambda p: p.stat().st_mtime, reverse=True)
         return str(all_files[0]) if all_files else None
-    return str(sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)[0])
+    return str(sorted(candidates, key=lambda p: p.stat().st_mtime, reverse=True)[0])
 
 
 def _run(job: Job) -> None:
     script = str(MODULE_SCRIPT[job.module])
     extra_args = MODULE_EXTRA_ARGS.get(job.module, [])
     cmd = [PYTHON_EXE, script] + extra_args
-
-    # Pass MEDICAL_DB_ROOT so SSC/XHI scripts can use it via env var override
-    import os
-    env = {**os.environ, "MEDICAL_DB_ROOT": MEDICAL_DB_ROOT}
 
     with _module_locks[job.module]:
         job.status = "running"
@@ -65,7 +75,7 @@ def _run(job: Job) -> None:
                 text=True,
                 timeout=SUBPROCESS_TIMEOUT,
                 cwd=str(PROJECT_ROOT),
-                env=env,
+                env=_build_env(),
             )
             raw_log = result.stdout + ("\n" + result.stderr if result.stderr else "")
             job.log = sanitize_log(raw_log)
@@ -85,14 +95,19 @@ def _run(job: Job) -> None:
         except subprocess.TimeoutExpired as exc:
             job.status = "failed"
             job.returncode = -1
-            out = (exc.stdout or "")
-            err = (exc.stderr or "")
+            out = exc.stdout or ""
+            err = exc.stderr or ""
             job.log = sanitize_log(f"TIMEOUT after {SUBPROCESS_TIMEOUT}s\n{out}\n{err}")
 
-        except Exception as exc:
+        except OSError as exc:
             job.status = "failed"
             job.returncode = -1
-            job.log = f"Runner error: {type(exc).__name__}: {exc}"
+            job.log = f"OS error launching pipeline: {exc}"
+
+        except Exception as exc:  # noqa: BLE001 — last-resort catch; type logged
+            job.status = "failed"
+            job.returncode = -1
+            job.log = f"Unexpected runner error: {type(exc).__name__}: {exc}"
 
         finally:
             job.finished_at = time.time()
@@ -103,6 +118,6 @@ def _run(job: Job) -> None:
 def launch(module: str, submitted_by: str = "unknown") -> Job:
     """Create a job record and execute the pipeline in a daemon thread."""
     job = store.create(module, submitted_by=submitted_by)
-    t = threading.Thread(target=_run, args=(job,), daemon=True)
-    t.start()
+    thread = threading.Thread(target=_run, args=(job,), daemon=True)
+    thread.start()
     return job

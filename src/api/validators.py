@@ -1,6 +1,9 @@
 """
 Input file validation: extension, size, and magic-byte checks.
+Raises HTTP 400/413 on invalid input; returns raw bytes on success.
 """
+
+from pathlib import Path
 
 from fastapi import HTTPException, UploadFile
 
@@ -8,28 +11,25 @@ from src.api.config import ALLOWED_EXTENSIONS, MAX_UPLOAD_BYTES
 
 # First-bytes signatures for supported formats
 _MAGIC: dict[str, bytes] = {
-    ".xlsx": b"PK\x03\x04",               # ZIP (Office Open XML)
-    ".xls": b"\xd0\xcf\x11\xe0",          # OLE2 Compound Document
-    ".csv": b"",                           # No fixed magic; validated by content
+    ".xlsx": b"PK\x03\x04",         # ZIP / Office Open XML
+    ".xls": b"\xd0\xcf\x11\xe0",    # OLE2 Compound Document
+    ".csv": b"",                     # No fixed magic; validated by encoding
 }
-
-_XLSX_MAX = 4
-_XLS_MAX = 4
 
 
 async def validate_upload(file: UploadFile, label: str = "file") -> bytes:
     """
-    Read the upload into memory, validate it, reset position.
-    Returns the raw bytes so callers can write without re-reading.
-    Raises HTTP 400/413 on invalid input.
+    Read the upload into memory, run all validation checks, reset stream.
+    Returns raw bytes so callers can write to disk without re-reading.
     """
-    from pathlib import Path
-
     ext = Path(file.filename or "").suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail=f"{label}: extension '{ext}' not allowed. Accepted: {sorted(ALLOWED_EXTENSIONS)}",
+            detail=(
+                f"{label}: extension '{ext}' not allowed. "
+                f"Accepted: {sorted(ALLOWED_EXTENSIONS)}"
+            ),
         )
 
     content = await file.read()
@@ -48,18 +48,36 @@ async def validate_upload(file: UploadFile, label: str = "file") -> bytes:
             detail=f"{label}: file content does not match expected format for {ext}",
         )
 
-    # For CSV: ensure first 512 bytes are decodable as UTF-8 or latin-1
     if ext == ".csv":
-        try:
-            content[:512].decode("utf-8")
-        except UnicodeDecodeError:
-            try:
-                content[:512].decode("latin-1")
-            except UnicodeDecodeError:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"{label}: CSV file does not appear to be text",
-                )
+        _validate_csv_encoding(content, label)
 
     await file.seek(0)
     return content
+
+
+def _validate_csv_encoding(content: bytes, label: str) -> None:
+    """
+    Reject obvious binary content in CSV uploads.
+    Null bytes are reliable indicators of binary files (executables, zips, etc.).
+    After that, accept UTF-8 or latin-1 encoded text.
+    """
+    sample = content[:512]
+    if b"\x00" in sample:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{label}: CSV file appears to be binary (null bytes detected)",
+        )
+    try:
+        sample.decode("utf-8")
+        return
+    except UnicodeDecodeError:
+        pass
+    try:
+        sample.decode("latin-1")
+        return
+    except UnicodeDecodeError:
+        pass
+    raise HTTPException(
+        status_code=400,
+        detail=f"{label}: CSV file does not appear to be valid text",
+    )
