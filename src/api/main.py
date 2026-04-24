@@ -31,12 +31,11 @@ app = FastAPI(
     title="Medical ETL API",
     description=(
         "REST API for triggering and monitoring medical data ETL pipelines.\n\n"
-        "**Authentication:** Click **Authorize** (top right) and enter your JWT token "
-        "or API key.\n\n"
+        "**Authentication:** Click **Authorize 🔓** (top right).\n\n"
         "- **JWT:** `POST /api/auth/login` → copy `access_token` → paste into "
-        "`BearerAuth (HTTPBearer)` field.\n"
-        "- **API key:** `POST /api/auth/keys` (admin) → copy `key` → paste into "
-        "`ApiKeyAuth (ApiKey)` field."
+        "the **HTTPBearer** field (no `Bearer ` prefix needed).\n"
+        "- **API key:** `POST /api/auth/keys` (admin only) → copy `key` → paste into "
+        "the **ApiKey** field."
     ),
     version="1.2.0",
     swagger_ui_parameters={"persistAuthorization": True},
@@ -52,18 +51,19 @@ def _custom_openapi() -> dict:
         description=app.description,
         routes=app.routes,
     )
+    # Names MUST match what FastAPI puts in each operation's security[] field
     schema.setdefault("components", {})["securitySchemes"] = {
-        "BearerAuth": {
+        "HTTPBearer": {
             "type": "http",
             "scheme": "bearer",
             "bearerFormat": "JWT",
             "description": "Paste the access_token from POST /api/auth/login",
         },
-        "ApiKeyAuth": {
+        "ApiKey": {
             "type": "apiKey",
             "in": "header",
             "name": "X-Api-Key",
-            "description": "Paste an API key created via POST /api/auth/keys",
+            "description": "Paste an API key created via POST /api/auth/keys (admin only)",
         },
     }
     app.openapi_schema = schema
