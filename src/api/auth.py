@@ -16,10 +16,10 @@ import time
 import uuid
 from typing import Optional
 
+import bcrypt
 from fastapi import APIRouter, Depends, HTTPException, Request, Security, status
 from fastapi.security import APIKeyHeader, HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from src.api.config import (
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES,
@@ -38,7 +38,6 @@ from src.api.models import (
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
-_pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _bearer = HTTPBearer(auto_error=False)
 _api_key_header = APIKeyHeader(name="X-Api-Key", auto_error=False, scheme_name="ApiKey")
 
@@ -49,11 +48,11 @@ _api_key_header = APIKeyHeader(name="X-Api-Key", auto_error=False, scheme_name="
 
 
 def _hash_password(plain: str) -> str:
-    return _pwd_ctx.hash(plain)
+    return bcrypt.hashpw(plain.encode(), bcrypt.gensalt(rounds=12)).decode()
 
 
 def _verify_password(plain: str, hashed: str) -> bool:
-    return _pwd_ctx.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode(), hashed.encode())
 
 
 def _hash_api_key(key: str) -> str:

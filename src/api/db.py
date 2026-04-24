@@ -10,7 +10,14 @@ import sqlite3
 import threading
 import time
 
-from src.api.config import ADMIN_PASSWORD, ADMIN_USERNAME, DB_PATH
+import bcrypt
+
+from src.api.config import DB_PATH
+
+# Default master admin seeded on first startup.
+# Password: HBox@123456!  — change via the user-management API after first login.
+_DEFAULT_ADMIN_USERNAME = "admin"
+_DEFAULT_ADMIN_HASH = "$2b$12$qoeQCjmv1taeroeFqhzEiejs4nixy2E7VgUlvcbg/cqOlvpREzELy"
 
 _local = threading.local()
 
@@ -90,17 +97,14 @@ def init_db() -> None:
 
 
 def _seed_admin(conn: sqlite3.Connection) -> None:
-    from passlib.context import CryptContext  # local import — avoids circular
-
     existing = conn.execute(
-        "SELECT 1 FROM users WHERE username = ?", (ADMIN_USERNAME,)
+        "SELECT 1 FROM users WHERE username = ?", (_DEFAULT_ADMIN_USERNAME,)
     ).fetchone()
     if existing:
         return
 
-    pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
     conn.execute(
         "INSERT INTO users (username, hashed_password, role, created_at) VALUES (?,?,?,?)",
-        (ADMIN_USERNAME, pwd_ctx.hash(ADMIN_PASSWORD), "admin", time.time()),
+        (_DEFAULT_ADMIN_USERNAME, _DEFAULT_ADMIN_HASH, "admin", time.time()),
     )
     conn.commit()
