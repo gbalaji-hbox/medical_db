@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/sheet";
 import { Card, CardContent } from "@/components/ui/card";
 import { PageLoader } from "@/components/ui/loader";
+import { Paginator } from "@/components/ui/paginator";
 import { listJobs, downloadJob, runExisting } from "@/api/jobs";
 import type { Job, Module } from "@/api/types";
 import { MODULE_LABELS } from "@/api/types";
@@ -201,6 +202,8 @@ export function JobsPage() {
   const [moduleFilter, setModuleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const { data: jobs, isLoading, refetch } = useQuery({
     queryKey: ["jobs"],
@@ -217,6 +220,8 @@ export function JobsPage() {
       return true;
     })
     .sort((a, b) => b.created_at - a.created_at);
+  const start = (page - 1) * pageSize;
+  const visibleJobs = filtered.slice(start, start + pageSize);
 
   async function handleDownload(job: Job, e: React.MouseEvent) {
     e.stopPropagation();
@@ -254,7 +259,13 @@ export function JobsPage() {
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
-        <Select value={moduleFilter} onValueChange={setModuleFilter}>
+        <Select
+          value={moduleFilter}
+          onValueChange={(value) => {
+            setModuleFilter(value);
+            setPage(1);
+          }}
+        >
           <SelectTrigger className="w-36">
             <SelectValue placeholder="Module" />
           </SelectTrigger>
@@ -267,7 +278,13 @@ export function JobsPage() {
           </SelectContent>
         </Select>
 
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <Select
+          value={statusFilter}
+          onValueChange={(value) => {
+            setStatusFilter(value);
+            setPage(1);
+          }}
+        >
           <SelectTrigger className="w-36">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -306,7 +323,7 @@ export function JobsPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filtered.map((job) => (
+                visibleJobs.map((job) => (
                   <TableRow
                     key={job.job_id}
                     className="cursor-pointer"
@@ -351,6 +368,18 @@ export function JobsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <Paginator
+        total={filtered.length}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+        pageSizeOptions={[10, 25, 50, 100]}
+      />
 
       <JobDrawer job={selectedJob} onClose={() => setSelectedJob(null)} />
     </div>
