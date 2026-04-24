@@ -62,6 +62,8 @@ src/*/output/unique_diseases_mapping.json
 
 # API runtime data
 .api_data.db
+.api_data.db-shm
+.api_data.db-wal
 encryption.key
 certs/
 
