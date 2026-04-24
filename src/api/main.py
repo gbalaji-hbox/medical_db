@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI
+from fastapi.openapi.utils import get_openapi
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -30,12 +31,46 @@ app = FastAPI(
     title="Medical ETL API",
     description=(
         "REST API for triggering and monitoring medical data ETL pipelines.\n\n"
-        "**Authentication:** Use `POST /api/auth/login` to get a JWT token, "
-        "then pass it as `Authorization: Bearer <token>`. "
-        "Alternatively supply an `X-Api-Key` header with a pre-issued API key."
+        "**Authentication:** Click **Authorize** (top right) and enter your JWT token "
+        "or API key.\n\n"
+        "- **JWT:** `POST /api/auth/login` → copy `access_token` → paste into "
+        "`BearerAuth (HTTPBearer)` field.\n"
+        "- **API key:** `POST /api/auth/keys` (admin) → copy `key` → paste into "
+        "`ApiKeyAuth (ApiKey)` field."
     ),
     version="1.2.0",
+    swagger_ui_parameters={"persistAuthorization": True},
 )
+
+
+def _custom_openapi() -> dict:
+    if app.openapi_schema:
+        return app.openapi_schema
+    schema = get_openapi(
+        title=app.title,
+        version=app.version,
+        description=app.description,
+        routes=app.routes,
+    )
+    schema.setdefault("components", {})["securitySchemes"] = {
+        "BearerAuth": {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": "Paste the access_token from POST /api/auth/login",
+        },
+        "ApiKeyAuth": {
+            "type": "apiKey",
+            "in": "header",
+            "name": "X-Api-Key",
+            "description": "Paste an API key created via POST /api/auth/keys",
+        },
+    }
+    app.openapi_schema = schema
+    return app.openapi_schema
+
+
+app.openapi = _custom_openapi  # type: ignore[method-assign]
 
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
