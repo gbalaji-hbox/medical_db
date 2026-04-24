@@ -68,3 +68,26 @@ class ApiKeyInfo(BaseModel):
     last_used_at: Optional[float] = None
     is_active: bool
     role: str
+
+
+# ---------------------------------------------------------------------------
+# Audit log models
+# ---------------------------------------------------------------------------
+
+class AuditLogEntry(BaseModel):
+    id: int
+    ts: float
+    client_ip: Optional[str] = None
+    auth_type: Optional[str] = None
+    identity: Optional[str] = None
+    method: str
+    path: str
+    status_code: Optional[int] = None
+    duration_ms: Optional[float] = None
+
+
+class AuditLogListResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    items: list[AuditLogEntry]
