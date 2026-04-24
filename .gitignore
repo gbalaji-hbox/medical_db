@@ -32,6 +32,10 @@ htmlcov/
 # VSCode
 .vscode/
 .history/
+node_modules/
+dist/
+.vite/
+build/
 
 # JetBrains
 .idea/
