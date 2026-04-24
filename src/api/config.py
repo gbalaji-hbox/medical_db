@@ -114,6 +114,9 @@ MODULE_OUTPUT_DIR = {
     "xhi": PROJECT_ROOT / "src" / "XHI" / "output",
 }
 
+# Sample files directory
+SAMPLES_DIR = PROJECT_ROOT / "src" / "samples"
+
 OUTPUT_GLOB = {
     "mca": "MCA_consolidated_*.xlsx*",
     "hct": "HCT_Consolidated_*.xlsx*",

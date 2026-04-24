@@ -5,15 +5,27 @@ from fastapi import APIRouter, Depends, File, UploadFile
 from src.api.auth import get_current_identity
 from src.api.config import MODULE_INPUT_DIR
 from src.api.models import JobCreated
-from src.api.routers._base import register_standard_routes
+from src.api.routers._base import register_sample_routes, register_standard_routes
 from src.api.runner import launch
 from src.api.validators import validate_upload
 
 MODULE = "mca"
 INPUT_DIR: Path = MODULE_INPUT_DIR[MODULE]
 
+# Sample files available for MCA module
+MCA_SAMPLE_FILES = [
+    "appointment_report_sample.xlsx",
+    "copay_report_sample.xlsx",
+    "patient_list_sample.xlsx",
+    "patients_by_diagnosis_sample.xlsx",
+    "patients_by_insurance_sample.xlsx",
+    "patients_with_visits_sample.xlsx",
+    "services_by_provider_sample.xlsx",
+]
+
 router = APIRouter(prefix=f"/api/{MODULE}", tags=[MODULE])
 register_standard_routes(router, MODULE)
+register_sample_routes(router, MODULE, MCA_SAMPLE_FILES)
 
 
 @router.post("/process", response_model=JobCreated)

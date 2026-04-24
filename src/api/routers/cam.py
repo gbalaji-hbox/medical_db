@@ -5,15 +5,21 @@ from fastapi import APIRouter, Depends, File, UploadFile
 from src.api.auth import get_current_identity
 from src.api.config import MODULE_INPUT_DIR
 from src.api.models import JobCreated
-from src.api.routers._base import register_standard_routes
+from src.api.routers._base import register_sample_routes, register_standard_routes
 from src.api.runner import launch
 from src.api.validators import validate_upload
 
 MODULE = "cam"
 INPUT_DIR: Path = MODULE_INPUT_DIR[MODULE]
 
+# Sample files available for CAM module
+CAM_SAMPLE_FILES = [
+    "data_new_sample.xlsx",
+]
+
 router = APIRouter(prefix=f"/api/{MODULE}", tags=[MODULE])
 register_standard_routes(router, MODULE)
+register_sample_routes(router, MODULE, CAM_SAMPLE_FILES)
 
 
 @router.post("/process", response_model=JobCreated)
