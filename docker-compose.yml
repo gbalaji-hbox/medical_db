@@ -1,25 +1,55 @@
 services:
+
+  # ── Backend API ──────────────────────────────────────────────────────────────
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
-    ports:
-      - "127.0.0.1:8000:8000"   # Caddy binds externally; this is LAN-only
+    # NOT exposed to the host — only reachable via the internal network by nginx
+    expose:
+      - "8000"
     volumes:
-      - api_data:/data            # SQLite DB + persisted state
-      - ./src:/app/src            # input files uploaded at runtime land here
+      - api_data:/data               # SQLite DB + encryption key (persisted)
+      - ./src:/app/src               # uploaded input files land here at runtime
+    env_file:
+      - .env                         # JWT_SECRET_KEY and any overrides go here
     environment:
-      # Required secrets — set in .env file or Docker secrets
       MEDICAL_DB_ROOT: /app
       DB_PATH: /data/api.db
-      # encryption.key auto-generated at /data/encryption.key on first boot (same volume)
       ENCRYPTION_KEY_FILE: /data/encryption.key
-      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
+      # Tighten CORS to only accept requests from the nginx frontend
+      CORS_ORIGINS: "http://localhost,http://frontend"
+    networks:
+      - internal
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 15s
 
+  # ── Frontend (nginx) ─────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "80:80"                      # public HTTP — put a TLS terminator in front for prod
+    networks:
+      - internal
+    depends_on:
+      api:
+        condition: service_healthy
+
+# ── Internal network (backend is not reachable from outside) ──────────────────
+networks:
+  internal:
+    driver: bridge
+    internal: false   # set true if you add an external TLS proxy service
+
+# ── Named volumes ─────────────────────────────────────────────────────────────
 volumes:
   api_data:
