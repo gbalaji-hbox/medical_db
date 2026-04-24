@@ -334,6 +334,7 @@ class CAMTemplateFormatter:
         """Process the raw data and save to template format."""
         # Load raw data
         df = pd.read_excel(self.input_excel)
+        print(f"Input records: {len(df)} records")
 
         # Prepare output data
         output_data = []
@@ -479,6 +480,7 @@ class CAMTemplateFormatter:
         with open(diseases_file, 'w') as f:
             json.dump(self.unique_diseases, f, indent=4)
 
+        print(f"Records output: {len(output_data)} records")
         print(f"Processed {len(output_data)} rows. Output saved to {self.output_excel}")
         print(f"Unique diseases mapping saved to {diseases_file}")
 

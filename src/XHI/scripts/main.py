@@ -234,6 +234,7 @@ def main():
     df = emr_grouped.merge(med_grouped, on='Chart ID', how='left')
     df = df.merge(prob_grouped, on='Chart ID', how='left')
     print("Merged, shape:", df.shape)
+    print(f"Input records: {len(df)} records")
 
     # Fill NaN
     df = df.fillna('')
@@ -331,6 +332,7 @@ def main():
     # Filter: only patients with primary insurance AND primary DX
     filtered_rows = [row for row, has_match in output_rows if row['PRIMARY INSURANCE'] and row['PRIMARY DX']]
     print(f"Filtered from {len(output_rows)} to {len(filtered_rows)} rows")
+    print(f"Records output: {len(filtered_rows)} records")
     
     # Create output DataFrame
     output_df = pd.DataFrame(filtered_rows)

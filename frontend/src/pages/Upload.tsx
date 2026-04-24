@@ -32,6 +32,7 @@ import { Separator } from "@/components/ui/separator";
 import { processFiles, runExisting, getJob, downloadJob } from "@/api/jobs";
 import type { Module } from "@/api/types";
 import { MODULES, MODULE_LABELS, MODULE_DESCRIPTIONS } from "@/api/types";
+import { consolidatedDownloadFilename } from "@/lib/downloadFilename";
 import { MODULE_FILE_SLOTS, type FileSlot } from "@/config/moduleFiles";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
@@ -224,7 +225,12 @@ export function UploadPage() {
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [jobId, setJobId] = useState<string | null>(null);
-  const [completedJob, setCompletedJob] = useState<{ id: string; module: Module } | null>(null);
+  const [completedJob, setCompletedJob] = useState<{
+    id: string;
+    module: Module;
+    finishedAt: number | null;
+    createdAt: number;
+  } | null>(null);
   const [downloading, setDownloading] = useState(false);
   const moduleRef = useRef<Module>(module);
 
@@ -311,7 +317,12 @@ export function UploadPage() {
           clearInterval(interval);
           setProgress(100);
           setRunning(false);
-          setCompletedJob({ id, module: moduleRef.current });
+          setCompletedJob({
+            id,
+            module: moduleRef.current,
+            finishedAt: job.finished_at,
+            createdAt: job.created_at,
+          });
           toast({ title: "Pipeline complete!", description: "Download your output below." });
         } else if (job.status === "error" || job.status === "failed") {
           clearInterval(interval);
@@ -340,7 +351,10 @@ export function UploadPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${completedJob.module}_consolidated_${completedJob.id.slice(0, 8)}.xlsx`;
+      a.download = consolidatedDownloadFilename(
+        completedJob.module,
+        completedJob.finishedAt ?? completedJob.createdAt
+      );
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

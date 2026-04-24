@@ -239,6 +239,7 @@ def main():
     df = df.merge(med_grouped, on='patientid', how='left')
     df = df.fillna('')
     print("Merged, shape:", df.shape)
+    print(f"Input records: {len(df)} records")
 
     # Apply mappings
     output_rows = []
@@ -342,6 +343,7 @@ def main():
     
     filtered_rows = [row for row, has_match in output_rows if row['PRIMARY INSURANCE'] and row['PRIMARY DX'] and is_valid_insurance(row)]
     print(f"Filtered from {len(output_rows)} to {len(filtered_rows)} rows")
+    print(f"Records output: {len(filtered_rows)} records")
     
     # Create output DataFrame
     output_df = pd.DataFrame(filtered_rows)

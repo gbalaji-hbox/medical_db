@@ -14,6 +14,8 @@ import { Separator } from "@/components/ui/separator";
 import { PageLoader } from "@/components/ui/loader";
 import { listJobs, downloadJob } from "@/api/jobs";
 import type { Job, Module } from "@/api/types";
+import { consolidatedDownloadFilename } from "@/lib/downloadFilename";
+import { extractJobRecordCounts, formatDurationHMS } from "@/lib/jobMetrics";
 import {
   MODULES,
   MODULE_LABELS,
@@ -49,19 +51,11 @@ function fmtTs(ts: number | null | undefined): string {
 }
 
 function duration(job: Job): string {
-  if (!job.finished_at || !job.created_at) return "—";
-  const secs = job.finished_at - job.created_at;
-  if (secs < 60) return `${secs}s`;
-  return `${Math.floor(secs / 60)}m ${secs % 60}s`;
+  return formatDurationHMS(job.started_at ?? job.created_at, job.finished_at);
 }
 
 function parseLogCounts(log: string) {
-  const inMatch = log.match(/records?\s*(processed|input|in)[:\s]+(\d+)/i);
-  const outMatch = log.match(/records?\s*(consolidated|output|out)[:\s]+(\d+)/i);
-  return {
-    recordsIn: inMatch ? parseInt(inMatch[2]) : null,
-    recordsOut: outMatch ? parseInt(outMatch[2]) : null,
-  };
+  return extractJobRecordCounts(log);
 }
 
 function statusDotClass(status: string | undefined): string {
@@ -71,12 +65,12 @@ function statusDotClass(status: string | undefined): string {
   return "bg-gray-300 dark:bg-gray-600";
 }
 
-async function triggerDownload(module: Module, jobId: string) {
+async function triggerDownload(module: Module, jobId: string, whenTs?: number | null) {
   const blob = await downloadJob(module, jobId);
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `${module}_consolidated_${jobId.slice(0, 8)}.xlsx`;
+  a.download = consolidatedDownloadFilename(module, whenTs);
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -90,7 +84,7 @@ function JobRow({ job }: { job: Job }) {
 
   async function handleDownload() {
     setDownloading(true);
-    try { await triggerDownload(job.module, job.job_id); }
+    try { await triggerDownload(job.module, job.job_id, job.finished_at ?? job.created_at); }
     finally { setDownloading(false); }
   }
 
@@ -150,11 +144,12 @@ function ModuleDetail({
   const latest = sorted[0] ?? null;
   const recent = sorted.slice(0, 5);
   const counts = latest ? parseLogCounts(latest.log) : { recordsIn: null, recordsOut: null };
+  const outputCount = counts.recordsOut ?? counts.recordsIn;
 
   async function handleDownload() {
     if (!latest || latest.status !== "done") return;
     setDownloading(true);
-    try { await triggerDownload(module, latest.job_id); }
+    try { await triggerDownload(module, latest.job_id, latest.finished_at ?? latest.created_at); }
     finally { setDownloading(false); }
   }
 
@@ -212,7 +207,7 @@ function ModuleDetail({
                 {latest.status === "done" && (
                   <Button
                     size="sm"
-                    className="gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white h-8"
+                    className="gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white h-8 dark:bg-emerald-500 dark:hover:bg-emerald-400 dark:text-emerald-950"
                     onClick={handleDownload}
                     disabled={downloading}
                   >
@@ -228,30 +223,18 @@ function ModuleDetail({
 
               <Separator />
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-2 text-sm">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                 <div>
                   <p className="text-xs text-muted-foreground">Submitted by</p>
                   <p className="font-medium">{latest.submitted_by ?? "—"}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Records in</p>
+                  <p className="text-xs text-muted-foreground">Records output</p>
                   <p className="font-medium">
-                    {counts.recordsIn !== null ? counts.recordsIn.toLocaleString() : "—"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Records out</p>
-                  <p className="font-medium">
-                    {counts.recordsOut !== null ? counts.recordsOut.toLocaleString() : "—"}
+                    {outputCount !== null ? outputCount.toLocaleString() : "—"}
                   </p>
                 </div>
               </div>
-
-              {latest.log && (
-                <p className="text-xs text-muted-foreground bg-muted/50 rounded px-2.5 py-1.5 truncate font-mono">
-                  {latest.log.trim().split("\n").at(-1)}
-                </p>
-              )}
             </div>
           )}
         </CardContent>

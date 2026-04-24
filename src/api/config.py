@@ -70,7 +70,8 @@ ALLOWED_EXTENSIONS = {".xlsx", ".xls", ".csv"}
 # ---------------------------------------------------------------------------
 
 OUTPUT_RETENTION_COUNT = 5
-JOB_TTL_SECONDS = 3600
+# Job row purge window. 0 disables automatic purge so dashboard/job history remains visible.
+JOB_TTL_SECONDS = int(os.environ.get("JOB_TTL_SECONDS", "0"))
 SUBPROCESS_TIMEOUT = 1800  # 30 min per pipeline
 
 # ---------------------------------------------------------------------------

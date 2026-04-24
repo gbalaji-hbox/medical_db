@@ -214,6 +214,7 @@ def run_pipeline(base_dir: Path) -> tuple[Path, Path]:
     icd_df = icd_df[icd_df["EMR ID"] != ""].drop_duplicates(subset=["EMR ID"], keep="first")
 
     log(f"Rows after dedupe - demographics: {len(dem_df)}, insurance: {len(ins_df)}, icd: {len(icd_df)}")
+    log(f"Input records: {len(dem_df)} records")
 
     dem_df = dem_df.set_index("EMR ID", drop=False)
     ins_df = ins_df.set_index("EMR ID", drop=False)
@@ -256,6 +257,7 @@ def run_pipeline(base_dir: Path) -> tuple[Path, Path]:
     final_df = final_df.reindex(columns=template_headers, fill_value="")
 
     log(f"Final merged row count: {len(final_df)}")
+    log(f"Records output: {len(final_df)} records")
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     final_csv = output_dir / f"HCT_Consolidated_{timestamp}.csv"

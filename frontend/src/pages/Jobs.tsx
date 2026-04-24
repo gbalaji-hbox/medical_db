@@ -37,6 +37,8 @@ import { Paginator } from "@/components/ui/paginator";
 import { listJobs, downloadJob, runExisting } from "@/api/jobs";
 import type { Job, Module } from "@/api/types";
 import { MODULE_LABELS } from "@/api/types";
+import { consolidatedDownloadFilename } from "@/lib/downloadFilename";
+import { extractJobRecordCounts, formatDurationHMS } from "@/lib/jobMetrics";
 import { useAuth } from "@/store/auth";
 
 const MODULES: (Module | "all")[] = ["all", "mca", "hct", "ssc", "cam", "cim", "xhi"];
@@ -55,15 +57,13 @@ function fmtTs(ts: number | null): string {
 }
 
 function duration(j: Job): string {
-  if (!j.started_at || !j.finished_at) return "—";
-  const secs = Math.round(j.finished_at - j.started_at);
-  if (secs < 60) return `${secs}s`;
-  return `${Math.floor(secs / 60)}m ${secs % 60}s`;
+  return formatDurationHMS(j.started_at ?? j.created_at, j.finished_at);
 }
 
 function parseRecords(log: string): string {
-  const m = log.match(/(\d[\d,]+)\s*records/i);
-  return m ? m[1] : "—";
+  const counts = extractJobRecordCounts(log);
+  const value = counts.recordsOut ?? counts.recordsIn;
+  return value !== null ? value.toLocaleString() : "—";
 }
 
 // ── Job detail drawer ─────────────────────────────────────────────────────────
@@ -87,7 +87,7 @@ function JobDrawer({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${job.module}_consolidated_${job.job_id.slice(0, 8)}.xlsx`;
+      a.download = consolidatedDownloadFilename(job.module, job.finished_at ?? job.created_at);
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -230,7 +230,7 @@ export function JobsPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `${job.module}_consolidated_${job.job_id.slice(0, 8)}.xlsx`;
+      a.download = consolidatedDownloadFilename(job.module, job.finished_at ?? job.created_at);
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

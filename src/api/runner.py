@@ -112,7 +112,8 @@ def _run(job: Job) -> None:
         finally:
             job.finished_at = time.time()
             store.update(job)
-            store.purge_old(JOB_TTL_SECONDS)
+            if JOB_TTL_SECONDS > 0:
+                store.purge_old(JOB_TTL_SECONDS)
 
 
 def launch(module: str, submitted_by: str = "unknown") -> Job:
