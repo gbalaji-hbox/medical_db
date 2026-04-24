@@ -7,7 +7,9 @@
       "Bash(.venv/Scripts/pytest tests/unit/ -q)",
       "Bash(.venv/Scripts/pytest tests/unit/)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(.venv/Scripts/python.exe -c ' *)",
+      "Bash(.venv/Scripts/pytest tests/unit/ --no-cov)"
     ]
   }
 }

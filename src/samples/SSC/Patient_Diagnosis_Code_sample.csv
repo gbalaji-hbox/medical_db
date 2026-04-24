@@ -1,0 +1,12 @@
+﻿REPORT NAME: Patient Diagnosis Code
+patientid,icd10encounterdiagcode,icd10encounterdiagdescr
+109001,I50.9,"Heart failure, unspecified"
+109001,I10,Essential (primary) hypertension
+109002,I25.10,Atherosclerotic heart disease of native coronary artery
+109002,E11.65,Type 2 diabetes mellitus with hyperglycemia
+109003,J44.1,Chronic obstructive pulmonary disease with acute exacerbation
+109003,I10,Essential (primary) hypertension
+109004,I49.9,Unspecified cardiac arrhythmia
+109004,G47.33,Obstructive sleep apnea (adult) (pediatric)
+109005,N18.3,"Chronic kidney disease, stage 3b"
+109005,I10,Essential (primary) hypertension
