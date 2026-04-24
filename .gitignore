@@ -40,8 +40,32 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-# Output and data files
+# Raw patient data — PHI, never committed
+src/MCA/*.xlsx
+src/MCA/*.xls
+src/HCT/*.xlsx
+src/HCT/*.xls
+src/CAM/*.xlsx
+src/CAM/*.xls
+src/CIM/*.xlsx
+src/CIM/*.xls
+src/SSC/*.csv
+src/XHI/*.csv
 
+# Pipeline outputs and intermediates
+src/*/output/
+src/*/cleaned/
+
+# Non-template JSON side-files
+src/*/scripts/unique_diseases_mapping.json
+src/*/output/unique_diseases_mapping.json
+
+# API runtime data
+.api_data.db
+certs/
+
+# Keep templates and reference data tracked
+!src/*/template/
 
 # Logs
 *.log

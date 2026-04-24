@@ -21,7 +21,7 @@ from datetime import datetime
 import openpyxl
 
 # Paths
-ROOT = r'D:\Work_Folder\medical_db'
+ROOT = os.environ.get('MEDICAL_DB_ROOT', r'D:\Work_Folder\medical_db')
 EMR_FILE = os.path.join(ROOT, 'src', 'XHI', 'EMR_Final_Report_final_part.csv')
 MED_FILE = os.path.join(ROOT, 'src', 'XHI', 'medication_report.csv')
 PROB_FILE = os.path.join(ROOT, 'src', 'XHI', 'problem_report.csv')
