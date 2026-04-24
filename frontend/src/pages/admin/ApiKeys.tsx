@@ -42,6 +42,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageLoader } from "@/components/ui/loader";
+import { Paginator } from "@/components/ui/paginator";
 import type { ApiKeyCreated } from "@/api/types";
 
 function fmtTs(ts: number | null): string {
@@ -59,6 +60,8 @@ export function ApiKeysPage() {
   const [createdKey, setCreatedKey] = useState<ApiKeyCreated | null>(null);
   const [copied, setCopied] = useState(false);
   const [revokeId, setRevokeId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const { data: keys, isLoading } = useQuery({
     queryKey: ["api-keys"],
@@ -99,6 +102,10 @@ export function ApiKeysPage() {
 
   if (isLoading) return <PageLoader text="Loading API keys…" />;
 
+  const activeKeys = (keys ?? []).filter((k) => k.is_active);
+  const start = (page - 1) * pageSize;
+  const visibleKeys = activeKeys.slice(start, start + pageSize);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -128,14 +135,14 @@ export function ApiKeysPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(keys ?? []).filter((k) => k.is_active).length === 0 ? (
+              {activeKeys.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground py-12">
                     No active API keys. Create one to get started.
                   </TableCell>
                 </TableRow>
               ) : (
-                (keys ?? []).filter((k) => k.is_active).map((k) => (
+                visibleKeys.map((k) => (
                   <TableRow key={k.key_id}>
                     <TableCell className="font-medium">{k.name}</TableCell>
                     <TableCell>
@@ -170,6 +177,18 @@ export function ApiKeysPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <Paginator
+        total={activeKeys.length}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+        pageSizeOptions={[5, 10, 25, 50]}
+      />
 
       {/* Create key dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

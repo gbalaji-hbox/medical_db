@@ -299,6 +299,16 @@ def main():
         print(f"Raw consolidated CSV: {final_output_csv} (kept for reference)")
 
         print(f"Total patients: {template_count}")
+        total_input_records = (
+            insurance_count
+            + visits_count
+            + patients_count
+            + patient_list_count
+            + appointments_count
+            + copay_count
+        )
+        print(f"Input records: {total_input_records} records")
+        print(f"Records output: {template_count} records")
         print("Template columns: EMR ID, patient names, demographics, insurance, comorbidities,")
         print("                  diagnosis codes, provider data, and all required fields")
         print(f"Cleanup: Intermediate files cleaned up: {cleaned_count} files removed")

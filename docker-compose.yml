@@ -37,7 +37,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "80:80"                      # public HTTP — put a TLS terminator in front for prod
+      - "8086:80"                      # public HTTP — put a TLS terminator in front for prod
     networks:
       - internal
     depends_on:

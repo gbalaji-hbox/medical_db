@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { apiClient } from "@/api/client";
+import { useNavigate } from "react-router-dom";
 import { AlertCircle, RefreshCw } from "lucide-react";
+import { listAuditLogs } from "@/api/audit";
 import {
   Select,
   SelectContent,
@@ -22,21 +23,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageLoader } from "@/components/ui/loader";
-import type { AuditEntry } from "@/api/types";
+import { Paginator } from "@/components/ui/paginator";
+import type { AuditLogListResponse } from "@/api/types";
 
 interface AuditFilter {
   identity?: string;
   method?: string;
-  page: number;
+  path_contains?: string;
+  offset: number;
   limit: number;
 }
 
-async function fetchAudit(filter: AuditFilter): Promise<AuditEntry[]> {
-  const res = await apiClient.get<AuditEntry[]>("/api/audit", { params: filter });
-  return res.data;
-}
-
-function statusColor(code: number): string {
+function statusColor(code: number | null): string {
+  if (code === null) return "text-muted-foreground";
   if (code < 300) return "text-emerald-600";
   if (code < 400) return "text-amber-600";
   return "text-red-600";
@@ -45,22 +44,33 @@ function statusColor(code: number): string {
 const METHODS = ["all", "GET", "POST", "PUT", "PATCH", "DELETE"];
 
 export function AuditPage() {
-  const [page] = useState(1);
+  const navigate = useNavigate();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(50);
   const [identity, setIdentity] = useState("");
+  const [pathContains, setPathContains] = useState("");
   const [method, setMethod] = useState("all");
 
   const filter: AuditFilter = {
-    page,
-    limit: 50,
+    offset: (page - 1) * pageSize,
+    limit: pageSize,
     ...(identity ? { identity } : {}),
+    ...(pathContains ? { path_contains: pathContains } : {}),
     ...(method !== "all" ? { method } : {}),
   };
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["audit", filter],
-    queryFn: () => fetchAudit(filter),
+    queryFn: () => listAuditLogs(filter),
     retry: false,
   });
+
+  const auditData: AuditLogListResponse = data ?? {
+    total: 0,
+    limit: pageSize,
+    offset: 0,
+    items: [],
+  };
 
   const endpointMissing =
     (error as { response?: { status?: number } })?.response?.status === 404 ||
@@ -87,7 +97,7 @@ export function AuditPage() {
         <div className="flex items-start gap-2 rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">
           <AlertCircle size={16} className="mt-0.5 shrink-0" />
           <p>
-            The audit endpoint (<code>/api/audit</code>) has not been added to the backend yet.
+            The audit endpoint (<code>/api/audit/logs</code>) is not available.
             This page will become functional once it is implemented.
           </p>
         </div>
@@ -98,10 +108,28 @@ export function AuditPage() {
         <Input
           placeholder="Filter by identity…"
           value={identity}
-          onChange={(e) => setIdentity(e.target.value)}
+          onChange={(e) => {
+            setIdentity(e.target.value);
+            setPage(1);
+          }}
           className="w-48"
         />
-        <Select value={method} onValueChange={setMethod}>
+        <Input
+          placeholder="Path contains…"
+          value={pathContains}
+          onChange={(e) => {
+            setPathContains(e.target.value);
+            setPage(1);
+          }}
+          className="w-56"
+        />
+        <Select
+          value={method}
+          onValueChange={(value) => {
+            setMethod(value);
+            setPage(1);
+          }}
+        >
           <SelectTrigger className="w-32">
             <SelectValue />
           </SelectTrigger>
@@ -131,38 +159,42 @@ export function AuditPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {(data ?? []).length === 0 ? (
+              {auditData.items.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center text-muted-foreground py-12">
                     {endpointMissing ? "Backend endpoint not available yet." : "No audit entries found."}
                   </TableCell>
                 </TableRow>
               ) : (
-                (data ?? []).map((entry) => (
-                  <TableRow key={entry.id}>
+                auditData.items.map((entry) => (
+                  <TableRow
+                    key={entry.id}
+                    className="cursor-pointer"
+                    onClick={() => navigate(`/admin/audit/${entry.id}`)}
+                  >
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
-                      {new Date(entry.timestamp).toLocaleString()}
+                      {new Date(entry.ts * 1000).toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-sm font-medium">{entry.identity}</TableCell>
+                    <TableCell className="text-sm font-medium">{entry.identity ?? "—"}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs">
-                        {entry.auth_type}
+                        {entry.auth_type ?? "—"}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <span className="font-mono text-xs font-semibold">{entry.method}</span>
                     </TableCell>
-                    <TableCell className="text-xs font-mono text-muted-foreground max-w-[200px] truncate">
+                    <TableCell className="text-xs font-mono text-muted-foreground max-w-50 truncate">
                       {entry.path}
                     </TableCell>
                     <TableCell className={`text-sm font-semibold ${statusColor(entry.status_code)}`}>
-                      {entry.status_code}
+                      {entry.status_code ?? "—"}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {entry.duration_ms}ms
+                      {entry.duration_ms !== null ? `${entry.duration_ms}ms` : "—"}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {entry.client_ip}
+                      {entry.client_ip ?? "—"}
                     </TableCell>
                   </TableRow>
                 ))
@@ -171,6 +203,18 @@ export function AuditPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <Paginator
+        total={auditData.total}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+        pageSizeOptions={[10, 25, 50, 100]}
+      />
     </div>
   );
 }

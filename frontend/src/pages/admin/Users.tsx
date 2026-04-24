@@ -32,6 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { PageLoader } from "@/components/ui/loader";
+import { Paginator } from "@/components/ui/paginator";
 
 function fmtTs(ts: number): string {
   return new Date(ts * 1000).toLocaleDateString();
@@ -52,6 +53,8 @@ export function UsersPage() {
   const [autoGen, setAutoGen] = useState(true);
   const [newRole, setNewRole] = useState<"admin" | "user">("user");
   const [resetResult, setResetResult] = useState<{ username: string; password: string } | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const { data: users, isLoading, error } = useQuery({
     queryKey: ["users"],
@@ -103,6 +106,8 @@ export function UsersPage() {
 
   const endpointMissing = (error as { response?: { status?: number } })?.response?.status === 404 ||
     (error as { response?: { status?: number } })?.response?.status === 405;
+  const start = (page - 1) * pageSize;
+  const visibleUsers = (users ?? []).slice(start, start + pageSize);
 
   return (
     <div className="space-y-6">
@@ -150,7 +155,7 @@ export function UsersPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                (users ?? []).map((u) => (
+                visibleUsers.map((u) => (
                   <TableRow key={u.username}>
                     <TableCell className="font-medium">{u.username}</TableCell>
                     <TableCell>
@@ -199,6 +204,18 @@ export function UsersPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <Paginator
+        total={(users ?? []).length}
+        page={page}
+        pageSize={pageSize}
+        onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPage(1);
+        }}
+        pageSizeOptions={[5, 10, 25, 50]}
+      />
 
       {/* Create user dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>

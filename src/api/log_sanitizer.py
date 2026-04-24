@@ -19,11 +19,13 @@ _SAFE_RE = re.compile(
     r"Final template:|"
     r"Raw consolidated|"
     r"Processing (complete|failed)|"
-    r"[A-Za-z ]+file:? \d+|"  # "Insurance file: 11681"
-    r"[A-Za-z ]+: \d+ records|"  # "... 3433 records"
-    r"[A-Za-z ]+merged: \d+|"
-    r"[A-Za-z ]+cleaned: \d+|"
-    r"[A-Za-z ]+combined: \d+|"
+    r"[A-Za-z ]+file:?\s*\d[\d,]*|"  # "Insurance file: 11,681"
+    r"[A-Za-z ]+:\s*\d[\d,]*\s*(records|rows)|"  # "...: 3,433 records|rows"
+    r"[A-Za-z ]+merged:\s*\d[\d,]*|"
+    r"[A-Za-z ]+cleaned:\s*\d[\d,]*|"
+    r"[A-Za-z ]+combined:\s*\d[\d,]*|"
+    r"Processed\s+\d[\d,]*\s+rows|"
+    r"Filtered\s+from\s+\d[\d,]*\s+to\s+\d[\d,]*\s+rows|"
     r"\s*$"                  # blank
     r")",
     re.IGNORECASE,

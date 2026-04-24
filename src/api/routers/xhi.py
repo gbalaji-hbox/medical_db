@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, UploadFile
 from src.api.auth import get_current_identity
 from src.api.config import MODULE_INPUT_DIR
 from src.api.models import JobCreated
-from src.api.routers._base import register_standard_routes
+from src.api.routers._base import register_sample_routes, register_standard_routes
 from src.api.runner import launch
 from src.api.validators import validate_upload
 
@@ -16,8 +16,16 @@ _EMR = "EMR_Final_Report_final_part.csv"
 _MED = "medication_report.csv"
 _PROB = "problem_report.csv"
 
+# Sample files available for XHI module
+XHI_SAMPLE_FILES = [
+    "EMR_Final_Report_sample.csv",
+    "medication_report_sample.csv",
+    "problem_report_sample.csv",
+]
+
 router = APIRouter(prefix=f"/api/{MODULE}", tags=[MODULE])
 register_standard_routes(router, MODULE)
+register_sample_routes(router, MODULE, XHI_SAMPLE_FILES)
 
 
 @router.post("/process", response_model=JobCreated)

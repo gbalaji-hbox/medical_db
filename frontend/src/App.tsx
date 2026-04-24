@@ -13,6 +13,7 @@ import { JobsPage } from "@/pages/Jobs";
 import { ApiKeysPage } from "@/pages/admin/ApiKeys";
 import { UsersPage } from "@/pages/admin/Users";
 import { AuditPage } from "@/pages/admin/Audit";
+import { AuditDetailPage } from "@/pages/admin/AuditDetail";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -44,6 +45,7 @@ export default function App() {
                   <Route path="admin/api-keys" element={<ApiKeysPage />} />
                   <Route path="admin/users" element={<UsersPage />} />
                   <Route path="admin/audit" element={<AuditPage />} />
+                  <Route path="admin/audit/:logId" element={<AuditDetailPage />} />
                 </Route>
               </Route>
             </Route>

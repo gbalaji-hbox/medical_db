@@ -99,16 +99,23 @@ export interface ModuleInfo {
   optional_files?: string[];
 }
 
-export interface AuditEntry {
+export interface AuditLogEntry {
   id: number;
-  timestamp: string;
-  identity: string;
-  auth_type: string;
+  ts: number;
+  identity: string | null;
+  auth_type: string | null;
   method: string;
   path: string;
-  status_code: number;
-  duration_ms: number;
-  client_ip: string;
+  status_code: number | null;
+  duration_ms: number | null;
+  client_ip: string | null;
+}
+
+export interface AuditLogListResponse {
+  total: number;
+  limit: number;
+  offset: number;
+  items: AuditLogEntry[];
 }
 
 export interface User {
