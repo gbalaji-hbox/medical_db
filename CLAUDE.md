@@ -51,16 +51,25 @@ src/{MODULE}/
 
 Input files (placed in the module root, e.g. `src/MCA/`) are git-ignored because they contain patient data. The `.xls` → `.xlsx` conversion happens automatically at runtime via Spire.XLS.
 
-## Module Purposes
+## Module Purposes & Source EHR Systems
 
-| Module | Description |
-|--------|-------------|
-| MCA | Main patient consolidation: insurance, visits, demographics, copay |
-| HCT | Demographics + ICD code grouping, insurance |
-| SSC | Chronic care management: medications + diagnoses |
-| CAM | Registry/problem list comorbidity mapping, provider parsing |
-| CIM | Intensive care management (similar structure to CAM) |
-| XHI | External EMR final report: medications + problem mapping |
+Each module pulls from a different clinic's EHR software. The export format, column names, and file structure differ per system.
+
+| Module | EHR System | Clinic / Network | Description |
+|--------|-----------|-----------------|-------------|
+| MCA | **CGM APRIMA** | Main cardiology practice | Patient consolidation: insurance, visits, demographics, copay |
+| HCT | **NextGen** | Heart Ctr Of N TX (Fort Worth / Granbury / Weatherford) | Demographics + ICD code grouping, insurance |
+| SSC | **Athena Health** | — | Chronic care management: medications + diagnoses |
+| CAM | **Epic (Henry Ford)** | Henry Ford Health | Registry/problem list comorbidity mapping, provider parsing |
+| CIM | **Epic (Henry Ford)** | Henry Ford Health | Intensive care management (similar structure to CAM) |
+| XHI | **DrChrono** | — | External EMR final report: medications + problem mapping |
+
+**Export format differences by EHR:**
+- **CGM APRIMA** — `.xlsx` exports with 13–20 metadata rows before the column header; data read by column *index*, not name.
+- **NextGen** — `.xlsx` exports with a `FILTERS - [Locations]: ... [Report Name]: ...` string in row 1, empty rows 2-4, column headers at row 5.
+- **Athena Health** — `.csv` exports with `REPORT NAME: ...` in row 1, column headers in row 2 (`skiprows=1` in pandas).
+- **Epic (Henry Ford)** — `.xlsx` exports with column headers at row 1 (no metadata prefix).
+- **DrChrono** — standard `.csv` exports with column headers at row 1 (no metadata prefix).
 
 ## Key Conventions
 
@@ -72,9 +81,17 @@ Input files (placed in the module root, e.g. `src/MCA/`) are git-ignored because
 
 **ICD-10 codes** used throughout (e.g. `I10` = Hypertension, `E11` = Type 2 Diabetes, `I50` = CHF). See `src/MCA/README.md` for the full mapping table with suggested vitals.
 
-## Data Source (EMR)
+## Data Sources (EMR)
 
-Reports are extracted manually from **CGM APRIMA** via RDP. Extraction SOPs with navigation paths are documented in `src/MCA/README.md` and `src/MCA/README_reports.md`. Credentials are stored in `.creds/` (git-ignored).
+Reports are extracted manually from each clinic's EHR system. MCA/CGM APRIMA extraction SOPs with RDP navigation paths are documented in `src/MCA/README.md` and `src/MCA/README_reports.md`. Credentials are stored in `.creds/` (git-ignored).
+
+## Sample Files
+
+Pre-built sample input files (5 fake records each, exact export format per EHR) are in `src/samples/{MODULE}/`. Regenerate them with:
+```bash
+python src/samples/generate_samples.py
+```
+These are used by the frontend UI "Download sample" button on each file upload slot.
 
 ## Troubleshooting
 

@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s -X POST http://127.0.0.1:8000/api/cam/process -F \"data_new=@d:/Work_Folder/medical_db/src/CAM/data_new.xlsx\")",
+      "Bash(.venv/Scripts/python -c ' *)"
+    ]
+  }
+}

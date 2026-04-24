@@ -1,0 +1,11 @@
+﻿Chart ID,Problem,ICD10 Code
+109001,"Heart failure, unspecified",I50.9
+109001,Essential (primary) hypertension,I10
+109002,Atherosclerotic heart disease of native coronary artery,I25.10
+109002,Type 2 diabetes mellitus with hyperglycemia,E11.65
+109003,Chronic obstructive pulmonary disease with acute exacerbation,J44.1
+109003,Essential (primary) hypertension,I10
+109004,Unspecified cardiac arrhythmia,I49.9
+109004,Obstructive sleep apnea (adult) (pediatric),G47.33
+109005,"Chronic kidney disease, stage 3b",N18.3
+109005,Essential (primary) hypertension,I10

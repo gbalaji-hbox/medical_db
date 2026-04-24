@@ -73,7 +73,7 @@ def convert_xls_to_xlsx(input_path, output_path=None):
         # Dispose of the workbook
         workbook.Dispose()
 
-        print(f"✓ Conversion completed: {output_path}")
+        print(f"OK: Conversion completed: {output_path}")
         return output_path
 
     except Exception as e:
@@ -180,7 +180,7 @@ def main():
             str(cleaned_insurance_csv)
         )
         insurance_count = insurance_cleaner.clean_data()
-        print(f"✓ Insurance data cleaned: {insurance_count} records\n")
+        print(f"OK: Insurance data cleaned: {insurance_count} records\n")
 
         # Step 2: Clean patients by diagnosis data
         print("Step 2: Cleaning patients by diagnosis or medication data...")
@@ -190,7 +190,7 @@ def main():
             str(service_by_provider_excel) if service_by_provider_excel else None
         )
         patients_count = patients_cleaner.clean_data()
-        print(f"✓ Patients by diagnosis or medication data cleaned: {patients_count} records\n")
+        print(f"OK: Patients by diagnosis or medication data cleaned: {patients_count} records\n")
 
         # Step 3: Clean visits data and merge with insurance
         print("Step 3: Cleaning visits data and merging with insurance...")
@@ -199,7 +199,7 @@ def main():
             str(cleaned_visits_csv)
         )
         visits_count = visits_cleaner.clean_data()
-        print(f"✓ Visits data cleaned: {visits_count} records\n")
+        print(f"OK: Visits data cleaned: {visits_count} records\n")
 
         # Merge insurance and visits data
         insurance_visits_merger = InsuranceVisitsMerger(
@@ -208,7 +208,7 @@ def main():
             str(merged_insurance_visits_csv)
         )
         merged_count = insurance_visits_merger.merge_data()
-        print(f"✓ Insurance and visits data merged: {merged_count} records\n")
+        print(f"OK: Insurance and visits data merged: {merged_count} records\n")
 
         # Step 4: Clean patient list data
         print("Step 4: Cleaning patient list data...")
@@ -217,7 +217,7 @@ def main():
             str(cleaned_patient_list_csv)
         )
         patient_list_count = patient_list_cleaner.clean_data()
-        print(f"✓ Patient list data cleaned: {patient_list_count} records\n")
+        print(f"OK: Patient list data cleaned: {patient_list_count} records\n")
 
         # Step 5: Clean appointments data
         print("Step 5: Cleaning appointments data...")
@@ -226,7 +226,7 @@ def main():
             str(cleaned_appointments_csv)
         )
         appointments_count = appointments_cleaner.clean_data()
-        print(f"✓ Appointments data cleaned: {appointments_count} records\n")
+        print(f"OK: Appointments data cleaned: {appointments_count} records\n")
 
         # Step 6: Clean copay data
         print("Step 6: Cleaning copay data...")
@@ -235,7 +235,7 @@ def main():
             str(cleaned_copay_csv)
         )
         copay_count = copay_cleaner.clean_data()
-        print(f"✓ Copay data cleaned: {copay_count} records\n")
+        print(f"OK: Copay data cleaned: {copay_count} records\n")
 
         # Step 7: Combine all data (insurance/visits + patients + patient list + appointments)
         print("Step 7: Combining all data...")
@@ -247,7 +247,7 @@ def main():
             str(cleaned_appointments_csv)
         )
         final_count = final_merger.merge_data()
-        print(f"✓ All data combined: {final_count} records\n")
+        print(f"OK: All data combined: {final_count} records\n")
 
         # Step 8: Merge copay data
         print("Step 8: Merging copay data...")
@@ -257,7 +257,7 @@ def main():
             str(final_output_csv)  # Overwrite the final output with copay added
         )
         copay_merged_count = copay_merger.merge_data()
-        print(f"✓ Copay data merged: {copay_merged_count} records\n")
+        print(f"OK: Copay data merged: {copay_merged_count} records\n")
 
         # Step 9: Convert to template format
         print("Step 9: Converting to template format...")
@@ -266,8 +266,8 @@ def main():
 
         formatter = TemplateFormatter(str(final_output_csv), str(output_excel))
         template_count = formatter.format_data()
-        print(f"✓ Data converted to template format: {template_count} records")
-        print(f"✓ Template Excel saved to: {output_excel}\n")
+        print(f"OK: Data converted to template format: {template_count} records")
+        print(f"OK: Template Excel saved to: {output_excel}\n")
 
         # Step 10: Clean up intermediate files
         print("Step 10: Cleaning up intermediate files...")
@@ -287,25 +287,25 @@ def main():
                 if file_path.exists():
                     file_path.unlink()
                     cleaned_count += 1
-                    print(f"✓ Removed intermediate file: {file_path.name}")
+                    print(f"OK: Removed intermediate file: {file_path.name}")
             except Exception as e:
-                print(f"⚠️  Warning: Could not remove {file_path.name}: {e}")
+                print(f"WARNING:  Warning: Could not remove {file_path.name}: {e}")
 
-        print(f"✓ Cleaned up {cleaned_count} intermediate files\n")
+        print(f"OK: Cleaned up {cleaned_count} intermediate files\n")
 
         # Summary
         print("=== Processing Complete ===")
-        print(f"📊 Final template: {output_excel}")
-        print(f"📄 Raw consolidated CSV: {final_output_csv} (kept for reference)")
+        print(f"Final template: {output_excel}")
+        print(f"Raw consolidated CSV: {final_output_csv} (kept for reference)")
 
-        print(f"�📈 Total patients: {template_count}")
-        print("📋 Template columns: EMR ID, patient names, demographics, insurance, comorbidities,")
-        print("                     diagnosis codes, provider data, and all required fields")
-        print(f"🧹 Intermediate files cleaned up: {cleaned_count} files removed")
-        print("\n✅ All data processing steps completed successfully!")
+        print(f"Total patients: {template_count}")
+        print("Template columns: EMR ID, patient names, demographics, insurance, comorbidities,")
+        print("                  diagnosis codes, provider data, and all required fields")
+        print(f"Cleanup: Intermediate files cleaned up: {cleaned_count} files removed")
+        print("\nOK: All data processing steps completed successfully!")
 
     except Exception as e:
-        print(f"\n❌ ERROR: {str(e)}")
+        print(f"\nERROR: {str(e)}")
         print("Processing failed. Please check the error message above.")
         sys.exit(1)
 

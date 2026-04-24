@@ -1,0 +1,25 @@
+services:
+  api:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8000:8000"   # Caddy binds externally; this is LAN-only
+    volumes:
+      - api_data:/data            # SQLite DB + persisted state
+      - ./src:/app/src            # input files uploaded at runtime land here
+    environment:
+      # Required secrets — set in .env file or Docker secrets
+      MEDICAL_DB_ROOT: /app
+      DB_PATH: /data/api.db
+      # encryption.key auto-generated at /data/encryption.key on first boot (same volume)
+      ENCRYPTION_KEY_FILE: /data/encryption.key
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?JWT_SECRET_KEY must be set}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  api_data:

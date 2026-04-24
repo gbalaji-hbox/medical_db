@@ -1,0 +1,11 @@
+﻿Chart ID,Medication,Status,Prescribed Datetime,Start Taking Datetime
+109001,Lisinopril 10 MG Tablet,Active,01/10/2026 09:00 AM,01/10/2026 09:00 AM
+109001,Metformin HCl 500 MG Tablet,Inactive,06/01/2025 09:00 AM,06/01/2025 09:00 AM
+109002,Metformin HCl 500 MG Tablet,Active,02/14/2026 10:30 AM,02/14/2026 10:30 AM
+109002,Atorvastatin 40 MG Tablet,Inactive,06/01/2025 09:00 AM,06/01/2025 09:00 AM
+109003,Atorvastatin 40 MG Tablet,Active,03/05/2026 11:00 AM,03/05/2026 11:00 AM
+109003,Amlodipine Besylate 5 MG Tablet,Inactive,06/01/2025 09:00 AM,06/01/2025 09:00 AM
+109004,Amlodipine Besylate 5 MG Tablet,Active,01/28/2026 02:00 PM,01/28/2026 02:00 PM
+109004,Furosemide 20 MG Tablet,Inactive,06/01/2025 09:00 AM,06/01/2025 09:00 AM
+109005,Furosemide 20 MG Tablet,Active,02/20/2026 03:30 PM,02/20/2026 03:30 PM
+109005,Lisinopril 10 MG Tablet,Inactive,06/01/2025 09:00 AM,06/01/2025 09:00 AM
