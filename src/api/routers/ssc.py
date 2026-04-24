@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, File, UploadFile
 from src.api.auth import get_current_identity
 from src.api.config import MODULE_INPUT_DIR
 from src.api.models import JobCreated
-from src.api.routers._base import register_standard_routes
+from src.api.routers._base import register_sample_routes, register_standard_routes
 from src.api.runner import launch
 from src.api.validators import validate_upload
 
@@ -17,8 +17,16 @@ _CHRONIC = "Chronic Management Patient Details - 20260403_04-55.csv"
 _DIAGNOSIS = "Patient Diagnosis Code - 20260403_05-19.csv"
 _MEDICATIONS = "Patient_Medication - 20260403_06-03.csv"
 
+# Sample files available for SSC module
+SSC_SAMPLE_FILES = [
+    "Chronic_Management_Patient_Details_sample.csv",
+    "Patient_Diagnosis_Code_sample.csv",
+    "Patient_Medication_sample.csv",
+]
+
 router = APIRouter(prefix=f"/api/{MODULE}", tags=[MODULE])
 register_standard_routes(router, MODULE)
+register_sample_routes(router, MODULE, SSC_SAMPLE_FILES)
 
 
 @router.post("/process", response_model=JobCreated)
