@@ -16,10 +16,13 @@ JWT_ALGORITHM = "HS256"
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES = 30
 JWT_REFRESH_TOKEN_EXPIRE_DAYS = 7
 
-# Fernet encryption for output files at rest.
-# Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
-# Set ENCRYPTION_KEY env var. If absent, output files are stored plaintext (dev mode only).
-ENCRYPTION_KEY: str | None = os.environ.get("ENCRYPTION_KEY")
+# Fernet encryption key file — auto-generated on first startup, persisted here.
+# In Docker this resolves to /data/encryption.key (same bind-mount volume as the DB).
+# Override path with ENCRYPTION_KEY_FILE env var if needed.
+KEY_FILE = Path(os.environ.get(
+    "ENCRYPTION_KEY_FILE",
+    str(Path(os.environ.get("DB_PATH", str(PROJECT_ROOT / ".api_data.db"))).parent / "encryption.key"),
+))
 
 # Rate limiting (applied globally via middleware)
 RATE_LIMIT_DEFAULT = "10/minute"

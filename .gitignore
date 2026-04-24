@@ -62,6 +62,7 @@ src/*/output/unique_diseases_mapping.json
 
 # API runtime data
 .api_data.db
+encryption.key
 certs/
 
 # Keep templates and reference data tracked
