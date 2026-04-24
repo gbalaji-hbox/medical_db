@@ -29,7 +29,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { processFiles, runExisting, getJob, downloadJob } from "@/api/jobs";
+import { processFiles, runExisting, getJob, downloadJob, downloadSample } from "@/api/jobs";
 import type { Module } from "@/api/types";
 import { MODULES, MODULE_LABELS, MODULE_DESCRIPTIONS } from "@/api/types";
 import { consolidatedDownloadFilename } from "@/lib/downloadFilename";
@@ -74,18 +74,13 @@ function FileSlotRow({
   const handleSampleDownload = async () => {
     if (!slot.sampleFile) return;
     try {
-      const url = `/api/samples/${module}/${encodeURIComponent(slot.sampleFile)}`;
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("access_token") ?? ""}`,
-        },
-      });
-      if (!res.ok) throw new Error("Not found");
-      const blob = await res.blob();
+      const blob = await downloadSample(module, slot.sampleFile);
+      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
+      a.href = url;
       a.download = slot.sampleFile;
       a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
     } catch {
       alert("Sample file not available yet.");
     }

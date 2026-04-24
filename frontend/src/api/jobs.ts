@@ -51,3 +51,10 @@ export async function listModuleJobs(module: Module): Promise<Job[]> {
   const all = await listJobs();
   return all.filter((j) => j.module === module);
 }
+
+export async function downloadSample(module: Module, sampleName: string): Promise<Blob> {
+  const res = await apiClient.get(`/api/${module}/samples/${encodeURIComponent(sampleName)}`, {
+    responseType: "blob",
+  });
+  return res.data;
+}
