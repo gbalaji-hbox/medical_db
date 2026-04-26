@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { apiClient, API_BASE } from "./client";
 import type { Job, JobCreated, Module } from "./types";
 
 export interface JobsFilter {
@@ -9,17 +9,17 @@ export interface JobsFilter {
 }
 
 export async function listJobs(filter?: JobsFilter): Promise<Job[]> {
-  const res = await apiClient.get<Job[]>("/api/jobs", { params: filter });
+  const res = await apiClient.get<Job[]>(`${API_BASE}/jobs`, { params: filter });
   return res.data;
 }
 
 export async function getJob(module: Module, jobId: string): Promise<Job> {
-  const res = await apiClient.get<Job>(`/api/${module}/jobs/${jobId}`);
+  const res = await apiClient.get<Job>(`${API_BASE}/${module}/jobs/${jobId}`);
   return res.data;
 }
 
 export async function runExisting(module: Module): Promise<JobCreated> {
-  const res = await apiClient.post<JobCreated>(`/api/${module}/run-existing`);
+  const res = await apiClient.post<JobCreated>(`${API_BASE}/${module}/run-existing`);
   return res.data;
 }
 
@@ -31,7 +31,7 @@ export async function processFiles(
   for (const [field, file] of Object.entries(files)) {
     form.append(field, file);
   }
-  const res = await apiClient.post<JobCreated>(`/api/${module}/process`, form, {
+  const res = await apiClient.post<JobCreated>(`${API_BASE}/${module}/process`, form, {
     headers: { "Content-Type": "multipart/form-data" },
   });
   return res.data;
@@ -41,7 +41,7 @@ export async function downloadJob(
   module: Module,
   jobId: string
 ): Promise<Blob> {
-  const res = await apiClient.get(`/api/${module}/jobs/${jobId}/download`, {
+  const res = await apiClient.get(`${API_BASE}/${module}/jobs/${jobId}/download`, {
     responseType: "blob",
   });
   return res.data;
@@ -53,7 +53,7 @@ export async function listModuleJobs(module: Module): Promise<Job[]> {
 }
 
 export async function downloadSample(module: Module, sampleName: string): Promise<Blob> {
-  const res = await apiClient.get(`/api/${module}/samples/${encodeURIComponent(sampleName)}`, {
+  const res = await apiClient.get(`${API_BASE}/${module}/samples/${encodeURIComponent(sampleName)}`, {
     responseType: "blob",
   });
   return res.data;

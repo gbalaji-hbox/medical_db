@@ -1,21 +1,13 @@
 import axios from "axios";
 
-// BASE_URL is set by Vite from the `base` config option (VITE_BASE_PATH env var).
-// In dev it is '/', in production it matches the sub-path (e.g. '/emr/').
-const BASE_URL = import.meta.env.BASE_URL.replace(/\/$/, ''); // '/emr' or ''
+// Single source of truth for the API base path.
+// import.meta.env.BASE_URL is set by Vite from VITE_BASE_PATH at build time.
+// e.g. '/emr/' in production, '/' in local dev.
+export const API_BASE = `${import.meta.env.BASE_URL}api`;
 
 export const apiClient = axios.create({
   baseURL: "",
   headers: { "Content-Type": "application/json" },
-});
-
-// Prepend the sub-path prefix so all absolute API paths work under any mount point.
-// Runs before the auth interceptor so the URL is correct before the token is attached.
-apiClient.interceptors.request.use((config) => {
-  if (BASE_URL && config.url && !config.url.startsWith(BASE_URL)) {
-    config.url = BASE_URL + config.url;
-  }
-  return config;
 });
 
 // Attach access token from memory on every request
@@ -67,7 +59,7 @@ async function attemptRefresh(): Promise<boolean> {
   const rt = getRefreshToken();
   if (!rt) return false;
   try {
-    const res = await axios.post(`${BASE_URL}/api/auth/refresh`, { refresh_token: rt });
+    const res = await axios.post(`${API_BASE}/auth/refresh`, { refresh_token: rt });
     setAccessToken(res.data.access_token);
     setRefreshToken(res.data.refresh_token);
     return true;
