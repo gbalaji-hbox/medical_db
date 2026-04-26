@@ -67,6 +67,7 @@ pipeline {
           rsync -a --delete \\
             --exclude='.git' \\
             --exclude='backups' \\
+            --exclude='data' \\
             medical-db/ ${COMPOSE_DIR}/
 
           echo "=== ENSURE PERMISSIONS ==="
