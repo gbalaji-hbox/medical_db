@@ -57,6 +57,16 @@ if errorlevel 1 (
   exit /b 1
 )
 
+:: ── Install Playwright browser ───────────────────────────────────────────────
+echo Installing browser...
+call node_modules\.bin\playwright install chromium
+
+if errorlevel 1 (
+  echo ERROR: Playwright browser install failed
+  pause
+  exit /b 1
+)
+
 :: ── Force Node to see installed modules ───────────────────────────────────────
 set NODE_PATH=%WORK_DIR%\node_modules
 
