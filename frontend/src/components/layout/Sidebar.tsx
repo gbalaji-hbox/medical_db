@@ -6,6 +6,7 @@ import {
   Users,
   KeyRound,
   ClipboardList,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/store/auth";
@@ -52,6 +53,7 @@ export function Sidebar({ onClose }: { onClose?: () => void }) {
       <NavItem to="/dashboard" icon={LayoutDashboard} label="Dashboard" end />
       <NavItem to="/upload" icon={Upload} label="Upload" />
       <NavItem to="/jobs" icon={FolderOpen} label="Jobs" />
+      <NavItem to="/automation" icon={Bot} label="Automation" />
 
       {user?.role === "admin" && (
         <>
