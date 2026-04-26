@@ -4,10 +4,10 @@ echo  DrChrono Automation Runner
 echo =====================================
 
 :: ── CONFIGURATION ─────────────────────────────────────────────────────────────
-set drchrono_username=YOUR_DRCHRONO_USERNAME
-set drchrono_password=YOUR_DRCHRONO_PASSWORD
+set drchrono_username=Hbox01
+set drchrono_password=HB0x@XHIJune2026!
 set API_BASE_URL=https://qam.hbox.ai/emr
-set API_KEY=YOUR_API_KEY_HERE
+set API_KEY=Hg_YLeA7EpcuXNtokyyvX4PFhFfOhnA11fP7qI4zLsk
 :: ─────────────────────────────────────────────────────────────────────────────
 
 :: ── Check Node.js — install if missing ───────────────────────────────────────

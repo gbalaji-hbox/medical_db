@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Bot, Check, Copy, Download, Terminal } from "lucide-react";
+import { Bot, Check, Copy, Download, Loader2, Terminal } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,21 @@ import {
   MODULE_DESCRIPTIONS,
   type Module,
 } from "@/api/types";
-import { API_BASE } from "@/api/client";
+import { API_BASE, apiClient } from "@/api/client";
+
+async function downloadBat() {
+  const resp = await apiClient.get(`${API_BASE}/scripts/run_drchrono.bat`, {
+    responseType: "blob",
+  });
+  const url = URL.createObjectURL(resp.data as Blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "run_drchrono.bat";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
 
 // Only XHI has automation for now
 const AUTOMATION_AVAILABLE: Partial<Record<Module, true>> = { xhi: true };
@@ -34,6 +48,20 @@ function CopyButton({ text }: { text: string }) {
   return (
     <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={handleCopy}>
       {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+    </Button>
+  );
+}
+
+function DownloadBatButton() {
+  const [loading, setLoading] = useState(false);
+  async function handle() {
+    setLoading(true);
+    try { await downloadBat(); } finally { setLoading(false); }
+  }
+  return (
+    <Button variant="outline" size="sm" className="gap-1.5" onClick={handle} disabled={loading}>
+      {loading ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+      Download bat file
     </Button>
   );
 }
@@ -78,12 +106,7 @@ function XHIAutomationDetail() {
       </div>
 
       <div className="flex items-center gap-2">
-        <a href={`${API_BASE}/scripts/run_drchrono.bat`} target="_blank" rel="noreferrer">
-          <Button variant="outline" size="sm" className="gap-1.5">
-            <Download size={13} />
-            Download bat file
-          </Button>
-        </a>
+        <DownloadBatButton />
       </div>
     </div>
   );
