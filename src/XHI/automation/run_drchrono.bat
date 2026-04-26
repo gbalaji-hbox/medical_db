@@ -2,12 +2,13 @@
 echo =====================================
 echo  DrChrono Automation Runner
 echo =====================================
+setlocal EnableDelayedExpansion
 
 :: ── CONFIGURATION ─────────────────────────────────────────────────────────────
 set drchrono_username=Hbox01
 set drchrono_password=HB0x@XHIJune2026!
 set API_BASE_URL=https://qam.hbox.ai/emr
-set API_KEY=Hg_YLeA7EpcuXNtokyyvX4PFhFfOhnA11fP7qI4zLsk
+set API_KEY=uCmPDOa2GpUa2oY1lxzJS2gEdtuIOm_RMYcIPd11Vwc
 :: ─────────────────────────────────────────────────────────────────────────────
 
 :: ── Check Node.js — install if missing ───────────────────────────────────────
@@ -18,14 +19,12 @@ if errorlevel 1 (
   start /wait msiexec /i "%TEMP%\node.msi" /qn /norestart
   del "%TEMP%\node.msi"
   :: Refresh PATH
-  for /f "tokens=*" %%i in ('powershell -Command "[System.Environment]::GetEnvironmentVariable(\"PATH\",\"Machine\")"') do set PATH=%%i;%PATH%
+  for /f "tokens=*" %%i in ('powershell -NoProfile -Command "[System.Environment]::GetEnvironmentVariable('PATH','Machine')"') do set "PATH=%%i;!PATH!"
   echo Node.js installed.
 )
 
 :: ── Prepare dated output folder on Desktop ────────────────────────────────────
-for /f "tokens=1-3 delims=/" %%a in ("%DATE%") do (
-  set TODAY=%%c%%a%%b
-)
+for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd"') do set TODAY=%%i
 set DESKTOP=%USERPROFILE%\Desktop
 set OUT_ROOT=%DESKTOP%\DrChrono_%TODAY%
 set RAW_DIR=%OUT_ROOT%\raw
@@ -52,8 +51,9 @@ if errorlevel 1 (
 
 :: ── Run automation ────────────────────────────────────────────────────────────
 echo Starting DrChrono automation...
-npx libretto close --all --force 2>nul
-npx --yes libretto run drchrono-submit.ts --headless
+:: npx libretto close --all --force 2>nul
+:: npx --yes libretto run drchrono-submit.ts --headless
+npx --yes --package=libretto@0.6.9 libretto run drchrono-submit.ts --headless
 if errorlevel 1 (
   echo ERROR: Automation failed. Check logs above.
   pause

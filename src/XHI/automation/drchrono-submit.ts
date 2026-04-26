@@ -1,4 +1,3 @@
-import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 import { workflow, type LibrettoWorkflowContext } from '@balaji-g42/libretto';
