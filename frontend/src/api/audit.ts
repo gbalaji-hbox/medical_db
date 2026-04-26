@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { apiClient, API_BASE } from "./client";
 import type { AuditLogEntry, AuditLogListResponse } from "./types";
 
 export interface AuditListParams {
@@ -15,13 +15,13 @@ export interface AuditListParams {
 export async function listAuditLogs(
   params: AuditListParams
 ): Promise<AuditLogListResponse> {
-  const res = await apiClient.get<AuditLogListResponse>("/api/audit/logs", {
+  const res = await apiClient.get<AuditLogListResponse>(`${API_BASE}/audit/logs`, {
     params,
   });
   return res.data;
 }
 
 export async function getAuditLog(logId: number): Promise<AuditLogEntry> {
-  const res = await apiClient.get<AuditLogEntry>(`/api/audit/logs/${logId}`);
+  const res = await apiClient.get<AuditLogEntry>(`${API_BASE}/audit/logs/${logId}`);
   return res.data;
 }

@@ -1,8 +1,10 @@
 import axios from "axios";
 
-// In production nginx proxies /api/* to the backend on the same origin.
-// In dev, vite.config.ts proxies /api/* to localhost:8000.
-// No absolute base URL needed in either environment.
+// Single source of truth for the API base path.
+// import.meta.env.BASE_URL is set by Vite from VITE_BASE_PATH at build time.
+// e.g. '/emr/' in production, '/' in local dev.
+export const API_BASE = `${import.meta.env.BASE_URL}api`;
+
 export const apiClient = axios.create({
   baseURL: "",
   headers: { "Content-Type": "application/json" },
@@ -57,7 +59,7 @@ async function attemptRefresh(): Promise<boolean> {
   const rt = getRefreshToken();
   if (!rt) return false;
   try {
-    const res = await axios.post("/api/auth/refresh", { refresh_token: rt });
+    const res = await axios.post(`${API_BASE}/auth/refresh`, { refresh_token: rt });
     setAccessToken(res.data.access_token);
     setRefreshToken(res.data.refresh_token);
     return true;

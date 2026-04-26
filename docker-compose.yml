@@ -6,20 +6,15 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    container_name: api
     # NOT exposed to the host — only reachable via the internal network by nginx
     expose:
       - "8000"
     volumes:
-      - api_data:/data               # SQLite DB + encryption key (persisted)
+      - ./data:/data
       - ./src:/app/src               # uploaded input files land here at runtime
     env_file:
-      - .env                         # JWT_SECRET_KEY and any overrides go here
-    environment:
-      MEDICAL_DB_ROOT: /app
-      DB_PATH: /data/api.db
-      ENCRYPTION_KEY_FILE: /data/encryption.key
-      # Tighten CORS to only accept requests from the nginx frontend
-      CORS_ORIGINS: "http://localhost,http://frontend"
+      - .env
     networks:
       - app-net
     healthcheck:
@@ -36,8 +31,9 @@ services:
       context: ./backup
       dockerfile: Dockerfile
     restart: unless-stopped
+    container_name: db-backup
     volumes:
-      - api_data:/data:ro           # read-only access to the SQLite volume
+      - ./data:/data:ro
       - ./backups:/backups          # bind-mount on host — daily .db snapshots land here
     networks:
       - app-net
@@ -50,7 +46,10 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        BASE_PATH: ${BASE_PATH:-/}
     restart: unless-stopped
+    container_name: frontend
     ports:
       - "8086:80"                      # public HTTP — put a TLS terminator in front for prod
     networks:
@@ -66,6 +65,3 @@ networks:
     name: app-net
     external: true
 
-# ── Named volumes ─────────────────────────────────────────────────────────────
-volumes:
-  api_data:

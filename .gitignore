@@ -64,12 +64,13 @@ src/*/cleaned/
 src/*/scripts/unique_diseases_mapping.json
 src/*/output/unique_diseases_mapping.json
 
-# API runtime data
+# API runtime data (DB, encryption key, Docker bind-mount directory)
 .api_data.db
 .api_data.db-shm
 .api_data.db-wal
 encryption.key
 certs/
+data/
 
 # Keep templates and reference data tracked
 !src/*/template/
