@@ -10,6 +10,7 @@ import { LoginPage } from "@/pages/Login";
 import { DashboardPage } from "@/pages/Dashboard";
 import { UploadPage } from "@/pages/Upload";
 import { JobsPage } from "@/pages/Jobs";
+import { AutomationPage } from "@/pages/Automation";
 import { ApiKeysPage } from "@/pages/admin/ApiKeys";
 import { UsersPage } from "@/pages/admin/Users";
 import { AuditPage } from "@/pages/admin/Audit";
@@ -39,6 +40,7 @@ export default function App() {
                 <Route path="dashboard" element={<DashboardPage />} />
                 <Route path="upload" element={<UploadPage />} />
                 <Route path="jobs" element={<JobsPage />} />
+                <Route path="automation" element={<AutomationPage />} />
 
                 {/* Admin-only routes */}
                 <Route element={<ProtectedRoute adminOnly />}>

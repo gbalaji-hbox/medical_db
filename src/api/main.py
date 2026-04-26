@@ -16,7 +16,7 @@ from src.api.db import init_db
 from src.api.job_store import store
 from src.api.models import JobStatus
 from src.api.routers import cam, cim, hct, mca, ssc, xhi
-from src.api.routers import audit_logs
+from src.api.routers import audit_logs, scripts
 
 limiter = Limiter(key_func=get_remote_address, default_limits=[RATE_LIMIT_DEFAULT])
 
@@ -90,6 +90,7 @@ app.add_middleware(
 
 app.include_router(auth_router.router)
 app.include_router(audit_logs.router)
+app.include_router(scripts.router)
 for _router in [mca.router, hct.router, ssc.router, cam.router, cim.router, xhi.router]:
     app.include_router(_router)
 

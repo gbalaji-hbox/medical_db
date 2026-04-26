@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { AlertCircle, Clock, Download, Loader2, Play } from "lucide-react";
+import { AlertCircle, Bot, Clock, Download, Loader2, Play } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -165,15 +165,28 @@ function ModuleDetail({
             {MODULE_DESCRIPTIONS[module]}
           </p>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5 shrink-0"
-          onClick={() => onNavigate(`/upload?module=${module}`)}
-        >
-          <Play size={13} />
-          Run Pipeline
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          {module === "xhi" && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              onClick={() => onNavigate(`/automation`)}
+            >
+              <Bot size={13} />
+              Automation
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={() => onNavigate(`/upload?module=${module}`)}
+          >
+            <Play size={13} />
+            Run Pipeline
+          </Button>
+        </div>
       </div>
 
       {/* Last run card */}
