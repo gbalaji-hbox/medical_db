@@ -76,7 +76,7 @@ pipeline {
 
           echo "=== BUILD IMAGES ==="
           cd ${COMPOSE_DIR}
-          docker compose build --no-cache
+          COMPOSE_BAKE=false docker compose build --no-cache
 
           echo "=== DEPLOY SERVICES ==="
           for SERVICE in api frontend db-backup; do
