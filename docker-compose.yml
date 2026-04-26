@@ -21,7 +21,7 @@ services:
       # Tighten CORS to only accept requests from the nginx frontend
       CORS_ORIGINS: "http://localhost,http://frontend"
     networks:
-      - internal
+      - app-net
     healthcheck:
       test: ["CMD", "python", "-c",
              "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
@@ -29,6 +29,21 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+
+  # ── DB Backup sidecar ────────────────────────────────────────────────────────
+  db-backup:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    volumes:
+      - api_data:/data:ro           # read-only access to the SQLite volume
+      - ./backups:/backups          # bind-mount on host — daily .db snapshots land here
+    networks:
+      - app-net
+    depends_on:
+      api:
+        condition: service_healthy
 
   # ── Frontend (nginx) ─────────────────────────────────────────────────────────
   frontend:
@@ -39,16 +54,17 @@ services:
     ports:
       - "8086:80"                      # public HTTP — put a TLS terminator in front for prod
     networks:
-      - internal
+      - app-net
     depends_on:
       api:
         condition: service_healthy
 
 # ── Internal network (backend is not reachable from outside) ──────────────────
 networks:
-  internal:
+  app-net:
     driver: bridge
-    internal: false   # set true if you add an external TLS proxy service
+    name: app-net
+    external: true
 
 # ── Named volumes ─────────────────────────────────────────────────────────────
 volumes:
