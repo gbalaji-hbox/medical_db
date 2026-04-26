@@ -11,7 +11,7 @@ from slowapi.util import get_remote_address
 from src.api import auth as auth_router
 from src.api.auth import get_current_identity
 from src.api.audit import AuditMiddleware
-from src.api.config import CORS_ORIGINS, RATE_LIMIT_DEFAULT
+from src.api.config import CORS_ORIGINS, RATE_LIMIT_DEFAULT, ROOT_PATH
 from src.api.db import init_db
 from src.api.job_store import store
 from src.api.models import JobStatus
@@ -29,6 +29,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     lifespan=lifespan,
+    root_path=ROOT_PATH,
     title="Medical ETL API",
     description=(
         "REST API for triggering and monitoring medical data ETL pipelines.\n\n"
@@ -51,6 +52,7 @@ def _custom_openapi() -> dict:
         version=app.version,
         description=app.description,
         routes=app.routes,
+        servers=[{"url": ROOT_PATH or "/"}],
     )
     # Names MUST match what FastAPI puts in each operation's security[] field
     schema.setdefault("components", {})["securitySchemes"] = {

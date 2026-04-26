@@ -69,6 +69,11 @@ pipeline {
             --exclude='backups' \\
             medical-db/ ${COMPOSE_DIR}/
 
+          echo "=== ENSURE PERMISSIONS ==="
+          mkdir -p ${COMPOSE_DIR}/data ${COMPOSE_DIR}/backups
+          chmod 777 ${COMPOSE_DIR}/data
+          chmod 644 ${COMPOSE_DIR}/.env
+
           echo "=== VERIFY REQUIRED FILES ==="
           test -f ${COMPOSE_DIR}/.env              || { echo "ERROR: .env missing";              exit 1; }
           test -f ${COMPOSE_DIR}/Dockerfile        || { echo "ERROR: Dockerfile missing";        exit 1; }
