@@ -10,16 +10,10 @@ services:
     expose:
       - "8000"
     volumes:
-      - api_data:/data               # SQLite DB + encryption key (persisted)
+      - api_data:/data
       - ./src:/app/src               # uploaded input files land here at runtime
     env_file:
-      - .env                         # JWT_SECRET_KEY and any overrides go here
-    environment:
-      MEDICAL_DB_ROOT: /app
-      DB_PATH: /data/api.db
-      ENCRYPTION_KEY_FILE: /data/encryption.key
-      # Tighten CORS to only accept requests from the nginx frontend
-      CORS_ORIGINS: "http://localhost,http://frontend"
+      - .env
     networks:
       - app-net
     healthcheck:
