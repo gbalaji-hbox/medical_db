@@ -2,7 +2,6 @@
 echo =====================================
 echo  DrChrono Automation Runner
 echo =====================================
-setlocal EnableDelayedExpansion
 
 :: ── CONFIGURATION ─────────────────────────────────────────────────────────────
 set drchrono_username=Hbox01
@@ -18,8 +17,6 @@ if errorlevel 1 (
   powershell -Command "Invoke-WebRequest https://nodejs.org/dist/latest-v20.x/node-v20.20.2-x64.msi -OutFile '%TEMP%\node.msi'"
   start /wait msiexec /i "%TEMP%\node.msi" /qn /norestart
   del "%TEMP%\node.msi"
-  :: Refresh PATH
-  for /f "tokens=*" %%i in ('powershell -NoProfile -Command "[System.Environment]::GetEnvironmentVariable('PATH','Machine')"') do set "PATH=%%i;!PATH!"
   echo Node.js installed.
 )
 
@@ -40,32 +37,45 @@ mkdir "%WORK_DIR%"
 cd /d "%WORK_DIR%"
 mkdir output\drchrono
 
-:: ── Download automation script from backend ───────────────────────────────────
+:: ── Download automation script ────────────────────────────────────────────────
 echo Downloading automation script...
-curl -s -f -H "X-Api-Key: %API_KEY%" "%API_BASE_URL%/api/scripts/drchrono-submit.ts" -o drchrono-submit.ts
-if errorlevel 1 (
-  echo ERROR: Failed to download script. Check API_BASE_URL and API_KEY.
+curl -H "X-Api-Key: %API_KEY%" "%API_BASE_URL%/api/scripts/drchrono-submit.ts" -o drchrono-submit.ts
+
+if not exist drchrono-submit.ts (
+  echo ERROR: Script download failed
   pause
   exit /b 1
 )
 
+:: ── Install dependency (NO npm init needed) ───────────────────────────────────
+echo Installing dependencies...
+call npm install @balaji-g42/libretto --yes
+
+if errorlevel 1 (
+  echo ERROR: npm install failed
+  pause
+  exit /b 1
+)
+
+:: ── Force Node to see installed modules ───────────────────────────────────────
+set NODE_PATH=%WORK_DIR%\node_modules
+
 :: ── Run automation ────────────────────────────────────────────────────────────
 echo Starting DrChrono automation...
-:: npx libretto close --all --force 2>nul
-:: npx --yes libretto run drchrono-submit.ts --headless
-npx --yes --package=libretto@0.6.9 libretto run drchrono-submit.ts --headless
+call npx libretto run drchrono-submit.ts --headless
+
 if errorlevel 1 (
   echo ERROR: Automation failed. Check logs above.
   pause
   exit /b 1
 )
 
-:: ── Copy outputs to Desktop ───────────────────────────────────────────────────
+:: ── Copy outputs ──────────────────────────────────────────────────────────────
 echo Saving files to Desktop...
 for %%f in ("%WORK_DIR%\output\drchrono\*.csv") do copy "%%f" "%RAW_DIR%\" >nul
 for %%f in ("%WORK_DIR%\output\drchrono\*.xlsx") do copy "%%f" "%OUTPUT_DIR%\" >nul
 
-:: ── Clean up ──────────────────────────────────────────────────────────────────
+:: ── Cleanup ───────────────────────────────────────────────────────────────────
 del drchrono-submit.ts >nul 2>&1
 cd /d "%TEMP%"
 rmdir /s /q "%WORK_DIR%"
