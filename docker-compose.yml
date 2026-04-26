@@ -44,6 +44,8 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        BASE_PATH: ${BASE_PATH:-/}
     restart: unless-stopped
     ports:
       - "8086:80"                      # public HTTP — put a TLS terminator in front for prod

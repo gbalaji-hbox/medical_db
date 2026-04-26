@@ -3,13 +3,17 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Sub-path mount point (e.g. /emr/). Set via docker-compose build args or --build-arg.
+# Defaults to / so local dev and plain docker run work without any extra config.
+ARG BASE_PATH=/
+ENV VITE_BASE_PATH=${BASE_PATH}
+
 # Install deps first (layer-cached unless package files change)
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
 
 # Copy source and build
 COPY . .
-# In production the API is on the same origin via nginx proxy — no VITE_API_URL needed
 RUN npm run build
 
 # ── Stage 2: serve with nginx ─────────────────────────────────────────────────
