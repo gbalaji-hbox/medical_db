@@ -129,7 +129,6 @@ function ModuleAutomationCard({ module, isSelected, onClick }: {
 
 function AutomationDetail({ module }: { module: Module }) {
   const hasAutomation = !!AUTOMATION_AVAILABLE[module];
-  const color = MODULE_COLORS[module] ?? "#6b7280";
 
   return (
     <div className="space-y-5">
