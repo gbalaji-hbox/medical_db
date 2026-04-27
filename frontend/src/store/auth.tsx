@@ -129,8 +129,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         applyToken(tokens.access_token);
         setRefreshToken(tokens.refresh_token);
       })
-      .catch(() => {
-        clearTokens();
+      .catch((err) => {
+        // Only wipe tokens when the server explicitly rejects them (401).
+        // Transient failures (network, 429 rate-limit, 5xx) should leave the
+        // refresh token intact so the next page load can retry.
+        const status = err?.response?.status;
+        if (status === 401) clearTokens();
       })
       .finally(() => setIsLoading(false));
   }, [applyToken]);

@@ -63,8 +63,8 @@ async function attemptRefresh(): Promise<boolean> {
     setAccessToken(res.data.access_token);
     setRefreshToken(res.data.refresh_token);
     return true;
-  } catch {
-    clearTokens();
+  } catch (err: any) {
+    if (err?.response?.status === 401) clearTokens();
     return false;
   }
 }
