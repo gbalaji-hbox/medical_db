@@ -34,19 +34,23 @@ function buildReportName(): string {
   return `HBox-EMR-${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}-${d.getFullYear()}`;
 }
 
-async function consolidateViaAPI(outputDir: string, reportName: string, session: string): Promise<void> {
+async function consolidateViaAPI(outputDir: string, reportName: string, session: string): Promise<string | null> {
   const allCsvs  = fs.readdirSync(outputDir).filter((f: string) => f.endsWith('.csv'));
   const medFile  = allCsvs.find((f: string) => f.startsWith('medication_report_'));
   const probFile = allCsvs.find((f: string) => f.startsWith('problem_report_'));
   const emrFile  = allCsvs.find((f: string) => f !== medFile && f !== probFile);
 
+  console.log(`[${session}] Uploading to XHI API:`);
+  console.log(`[${session}]   EMR report     : ${emrFile  ?? '⚠ NOT FOUND'}`);
+  console.log(`[${session}]   Medication     : ${medFile  ?? '⚠ NOT FOUND'}`);
+  console.log(`[${session}]   Problem list   : ${probFile ?? '⚠ NOT FOUND'}`);
+
   if (!medFile || !probFile || !emrFile) {
-    console.warn(`[${session}] Missing CSVs — skipping consolidation`);
-    return;
+    console.warn(`[${session}] ⚠ Missing one or more CSV files — skipping consolidation`);
+    return null;
   }
 
   // POST /api/xhi/process
-  console.log(`[${session}] Submitting files to XHI API...`);
   const form = new FormData();
   form.append('emr_report',        new Blob([fs.readFileSync(path.join(outputDir, emrFile))],  { type: 'text/csv' }), emrFile);
   form.append('medication_report', new Blob([fs.readFileSync(path.join(outputDir, medFile))],  { type: 'text/csv' }), medFile);
@@ -55,7 +59,7 @@ async function consolidateViaAPI(outputDir: string, reportName: string, session:
   const submitRes = await fetch(`${API_BASE}/api/xhi/process`, { method: 'POST', headers: API_HEADERS, body: form });
   if (!submitRes.ok) throw new Error(`XHI submit failed ${submitRes.status}: ${await submitRes.text()}`);
   const { job_id } = await submitRes.json() as { job_id: string };
-  console.log(`[${session}] XHI job queued — job_id: ${job_id}`);
+  console.log(`[${session}] Job created      — job_id: ${job_id}`);
 
   // Poll /api/xhi/jobs/{job_id}
   const DEADLINE_MS = Date.now() + 30 * 60_000;
@@ -66,9 +70,16 @@ async function consolidateViaAPI(outputDir: string, reportName: string, session:
     if (!pollRes.ok) throw new Error(`XHI poll failed ${pollRes.status}`);
     const job = await pollRes.json() as { status: string; error?: string };
     status = job.status;
-    console.log(`[${session}] XHI job status: ${status}`);
-    if (status === 'done') break;
-    if (status === 'failed' || status === 'error') throw new Error(`XHI pipeline failed: ${job.error ?? status}`);
+    if (status === 'running' || status === 'pending') {
+      console.log(`[${session}] Job running      — ${job_id} [${status}]`);
+    } else if (status === 'done') {
+      console.log(`[${session}] Job completed    — ${job_id}`);
+      break;
+    } else if (status === 'failed' || status === 'error') {
+      throw new Error(`XHI pipeline failed: ${job.error ?? status}`);
+    } else {
+      console.log(`[${session}] Job status       — ${job_id} [${status}]`);
+    }
   }
   if (status !== 'done') throw new Error('XHI job timed out after 30 min');
 
@@ -79,8 +90,10 @@ async function consolidateViaAPI(outputDir: string, reportName: string, session:
   const disposition = dlRes.headers.get('content-disposition') ?? '';
   const fnMatch = disposition.match(/filename="([^"]+)"/);
   const outName = fnMatch ? fnMatch[1] : `XHI_consolidated_${reportName}.xlsx`;
-  fs.writeFileSync(path.join(outputDir, outName), Buffer.from(await dlRes.arrayBuffer()));
-  console.log(`[${session}] ✅ Consolidated file saved: ${path.join(outputDir, outName)}`);
+  const outPath = path.join(outputDir, outName);
+  fs.writeFileSync(outPath, new Uint8Array(await dlRes.arrayBuffer()));
+  console.log(`[${session}] Consolidated file : ${outName}`);
+  return outName;
 }
 
 export default workflow<void, Output>(
@@ -136,19 +149,21 @@ export default workflow<void, Output>(
     console.log(`[${session}] Fetching Medication Report CSV`);
     const medR       = await page.context().request.get(`${BASE_URL}/analytics/medication_report/export_csv?page=1&prescribed_start=${encodeURIComponent(dateOffsetMMDDYYYY(1))}&prescribed_end=${encodeURIComponent(today)}`, { timeout: 30_000 });
     const medCsvText = await medR.text();
-    const medFile    = path.join(OUTPUT_DIR, `medication_report_${name}.csv`);
-    fs.writeFileSync(medFile, medCsvText);
-    downloadedFiles.push(medFile);
-    console.log(`[${session}] Medication report saved (${medCsvText.length} chars)`);
+    const medFilename = `medication_report_${name}.csv`;
+    const medFilePath = path.join(OUTPUT_DIR, medFilename);
+    fs.writeFileSync(medFilePath, medCsvText);
+    downloadedFiles.push(medFilePath);
+    console.log(`[${session}] Downloaded        : ${medFilename} (${medCsvText.length.toLocaleString()} bytes)`);
 
     // ── 4. PROBLEM REPORT — 5-year range ─────────────────────────────────────
     console.log(`[${session}] Fetching Problem Report CSV`);
     const probR       = await page.context().request.get(`${BASE_URL}/analytics/problem_report/export_csv?page=1&start_date=${encodeURIComponent(dateOffsetMMDDYYYY(5))}&end_date=${encodeURIComponent(today)}`, { timeout: 30_000 });
     const probCsvText = await probR.text();
-    const probFile    = path.join(OUTPUT_DIR, `problem_report_${name}.csv`);
-    fs.writeFileSync(probFile, probCsvText);
-    downloadedFiles.push(probFile);
-    console.log(`[${session}] Problem report saved (${probCsvText.length} chars)`);
+    const probFilename = `problem_report_${name}.csv`;
+    const probFilePath = path.join(OUTPUT_DIR, probFilename);
+    fs.writeFileSync(probFilePath, probCsvText);
+    downloadedFiles.push(probFilePath);
+    console.log(`[${session}] Downloaded        : ${probFilename} (${probCsvText.length.toLocaleString()} bytes)`);
 
     // ── 5. POLL FOR ADVANCED REPORT ZIP ──────────────────────────────────────
     console.log(`[${session}] Waiting 2 min for advanced report to generate...`);
@@ -165,42 +180,83 @@ export default workflow<void, Output>(
         const s3Match = html.match(/https:\/\/[^"'\s<>]+s3[^"'\s<>]*amazonaws[^"'\s<>]+/);
         const s3Url = s3Match ? s3Match[0].replace(/&amp;/g, '&') : null;
         if (s3Url) {
+          console.log(`[${session}] S3 URL found — downloading ZIP...`);
           const s3Resp = await page.context().request.get(s3Url, { timeout: 60_000 });
-          const advFile = path.join(OUTPUT_DIR, `${name}.zip`);
-          fs.writeFileSync(advFile, await s3Resp.body());
-          const { execSync } = await import('child_process');
-          execSync(`powershell -Command "Expand-Archive -Path '${advFile}' -DestinationPath '${OUTPUT_DIR}' -Force"`, { stdio: 'pipe' });
-          fs.unlinkSync(advFile);
-          const extracted = fs.readdirSync(OUTPUT_DIR).filter((f: string) => !f.endsWith('.zip')).map((f: string) => path.join(OUTPUT_DIR, f));
-          downloadedFiles.push(...extracted);
-          console.log(`[${session}] Extracted: ${extracted.join(', ')}`);
-          advancedReportDownloaded = true;
+          const zipBody = await s3Resp.body();
+          if (!zipBody || zipBody.length < 100) {
+            console.warn(`[${session}] ⚠ S3 response too small (${zipBody?.length ?? 0} bytes) — ZIP not ready, retrying`);
+          } else {
+            const zipFilename = `${name}.zip`;
+            const advFile = path.join(OUTPUT_DIR, zipFilename);
+            fs.writeFileSync(advFile, zipBody);
+            console.log(`[${session}] Downloaded        : ${zipFilename} (${zipBody.length.toLocaleString()} bytes)`);
+
+            const { execSync } = await import('child_process');
+            const beforeFiles = new Set(fs.readdirSync(OUTPUT_DIR));
+            try {
+              execSync(`powershell -Command "Expand-Archive -Path '${advFile}' -DestinationPath '${OUTPUT_DIR}' -Force"`, { stdio: 'pipe' });
+            } catch (err: any) {
+              console.error(`[${session}] ✖ Expand-Archive error: ${err.stderr?.toString() ?? err.message}`);
+            }
+            fs.unlinkSync(advFile);
+            console.log(`[${session}] ZIP deleted       : ${zipFilename}`);
+
+            const newFiles = fs.readdirSync(OUTPUT_DIR)
+              .filter((f: string) => !f.endsWith('.zip') && !beforeFiles.has(f))
+              .map((f: string) => path.join(OUTPUT_DIR, f));
+
+            if (newFiles.length === 0) {
+              console.warn(`[${session}] ⚠ ZIP extracted 0 new files — extraction may have failed`);
+            } else {
+              console.log(`[${session}] Extracted ${newFiles.length} file(s) from ZIP:`);
+              for (const f of newFiles) {
+                const size = fs.statSync(f).size;
+                console.log(`[${session}]   ${path.basename(f)} (${size.toLocaleString()} bytes)`);
+                downloadedFiles.push(f);
+              }
+              advancedReportDownloaded = true;
+            }
+          }
         } else {
-          console.log(`[${session}] Report found but no S3 URL — retrying`);
+          console.log(`[${session}] Report found but no S3 URL yet — retrying`);
         }
       } else {
         console.log(`[${session}] Report not ready yet`);
       }
 
       if (!advancedReportDownloaded && attempt < 5) {
-        console.log(`[${session}] Waiting 5 min...`);
+        console.log(`[${session}] Waiting 5 min before next attempt...`);
         await page.waitForTimeout(5 * 60_000);
       }
     }
 
     if (!advancedReportDownloaded) {
-      console.warn(`[${session}] Advanced report not found after 5 attempts`);
+      console.warn(`[${session}] ⚠ Advanced report not found after 5 attempts`);
     }
 
     // ── 6. CONSOLIDATE via API ────────────────────────────────────────────────
+    let consolidatedFile: string | null = null;
     if (advancedReportDownloaded) {
-      console.log(`[${session}] Running XHI consolidation via API...`);
-      await consolidateViaAPI(OUTPUT_DIR, name, session);
+      console.log(`[${session}] ── Consolidation ─────────────────────────────────`);
+      consolidatedFile = await consolidateViaAPI(OUTPUT_DIR, name, session);
+      if (consolidatedFile) downloadedFiles.push(path.join(OUTPUT_DIR, consolidatedFile));
     }
 
     // ── 7. LOGOUT ─────────────────────────────────────────────────────────────
     await page.goto(`${BASE_URL}/accounts/logout/`, { waitUntil: 'domcontentloaded' });
-    console.log(`[${session}] ✅ Done — ${downloadedFiles.length} file(s)`);
+    console.log(`[${session}] Logged out`);
+
+    // ── 8. SUMMARY ────────────────────────────────────────────────────────────
+    console.log(`[${session}] ── Summary ───────────────────────────────────────`);
+    console.log(`[${session}] Files ready (${downloadedFiles.length}):`);
+    for (const f of downloadedFiles) {
+      const size = fs.existsSync(f) ? fs.statSync(f).size : 0;
+      console.log(`[${session}]   ${path.basename(f)} (${size.toLocaleString()} bytes)`);
+    }
+    if (!consolidatedFile) {
+      console.warn(`[${session}] ⚠ No consolidated output produced`);
+    }
+
     return { advancedReportName: name, downloadedFiles };
   },
 );
