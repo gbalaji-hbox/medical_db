@@ -57,7 +57,15 @@ async function consolidateViaAPI(outputDir: string, reportName: string, session:
   form.append('problem_report',    new Blob([fs.readFileSync(path.join(outputDir, probFile))], { type: 'text/csv' }), probFile);
 
   const submitRes = await fetch(`${API_BASE}/api/xhi/process`, { method: 'POST', headers: API_HEADERS, body: form });
-  if (!submitRes.ok) throw new Error(`XHI submit failed ${submitRes.status}: ${await submitRes.text()}`);
+  if (!submitRes.ok) {
+    const raw = await submitRes.text();
+    let detail = raw;
+    try {
+      const parsed = JSON.parse(raw);
+      detail = parsed.traceback ?? parsed.detail ?? raw;
+    } catch {}
+    throw new Error(`XHI submit failed ${submitRes.status}:\n${detail}`);
+  }
   const { job_id } = await submitRes.json() as { job_id: string };
   console.log(`[${session}] Job created      — job_id: ${job_id}`);
 
