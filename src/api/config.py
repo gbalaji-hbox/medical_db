@@ -79,6 +79,9 @@ ALLOWED_EXTENSIONS = {".xlsx", ".xls", ".csv"}
 OUTPUT_RETENTION_COUNT = 5
 # Job row purge window. 0 disables automatic purge so dashboard/job history remains visible.
 JOB_TTL_SECONDS = int(os.environ.get("JOB_TTL_SECONDS", "0"))
+
+# Set SANITIZE_LOGS=false in .env to disable PHI redaction (dev/debug only).
+SANITIZE_LOGS = os.environ.get("SANITIZE_LOGS", "false").lower() not in ("false", "0", "no")
 SUBPROCESS_TIMEOUT = 1800  # 30 min per pipeline
 
 # ---------------------------------------------------------------------------

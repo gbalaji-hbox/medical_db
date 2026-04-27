@@ -212,11 +212,12 @@ def main():
     icd_to_cause, prefix_to_cause = load_icd_to_cause()
     print("Loaded mappings")
 
-    # Load data
-    emr_df = pd.read_csv(EMR_FILE)
-    med_df = pd.read_csv(MED_FILE)
-    prob_df = pd.read_csv(PROB_FILE)
-    print("Loaded data")
+    # Load data — use python engine for prob/med to handle unquoted fields with
+    # embedded commas/newlines in DrChrono exports (avoids pandas ParserError)
+    emr_df  = pd.read_csv(EMR_FILE)
+    med_df  = pd.read_csv(MED_FILE,  engine='python', on_bad_lines='skip')
+    prob_df = pd.read_csv(PROB_FILE, engine='python', on_bad_lines='skip')
+    print(f"Loaded data — emr:{len(emr_df)} med:{len(med_df)} prob:{len(prob_df)}")
 
     # Group EMR by Chart ID, taking most recent appointment data
     emr_df['Date of Last Appointment'] = pd.to_datetime(emr_df['Date of Last Appointment'], errors='coerce')

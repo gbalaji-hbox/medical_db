@@ -56,7 +56,7 @@ async function consolidateViaAPI(outputDir: string, reportName: string, session:
   form.append('medication_report', new Blob([fs.readFileSync(path.join(outputDir, medFile))],  { type: 'text/csv' }), medFile);
   form.append('problem_report',    new Blob([fs.readFileSync(path.join(outputDir, probFile))], { type: 'text/csv' }), probFile);
 
-  const submitRes = await fetch(`${API_BASE}/api/xhi/process`, { method: 'POST', headers: API_HEADERS, body: form });
+  const submitRes = await fetch(`${API_BASE}/api/xhi/process`, { method: 'POST', headers: { 'X-Api-Key': API_KEY }, body: form });
   if (!submitRes.ok) {
     const raw = await submitRes.text();
     let detail = raw;
@@ -84,9 +84,8 @@ async function consolidateViaAPI(outputDir: string, reportName: string, session:
       console.log(`[${session}] Job completed    — ${job_id}`);
       break;
     } else if (status === 'failed' || status === 'error') {
-      console.error(`[${session}] ✖ Job failed — ${job_id}`);
-      if (job.log) console.error(`[${session}] Pipeline output:\n${job.log}`);
-      throw new Error(`XHI pipeline failed: ${job.error ?? status}`);
+      const logText = job.log ? `\n\nPipeline log:\n${job.log}` : '';
+      throw new Error(`XHI pipeline failed: ${job.error ?? status}${logText}`);
     } else {
       console.log(`[${session}] Job status       — ${job_id} [${status}]`);
     }
