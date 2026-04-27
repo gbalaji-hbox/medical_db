@@ -95,11 +95,11 @@ function FileSlotRow({
       onDrop={handleDrop}
       className={`rounded-lg border-2 transition-colors p-3 ${
         dragging
-          ? "border-primary bg-primary/5"
+          ? "border-primary bg-primary/5 dark:bg-primary/20"
           : filled
-          ? "border-emerald-400 bg-emerald-50/50"
+          ? "border-emerald-400 bg-emerald-50/70 dark:border-emerald-400/65 dark:bg-emerald-500/14 dark:shadow-[inset_0_0_0_1px_rgba(16,185,129,0.15)]"
           : state.error
-          ? "border-destructive/50 bg-destructive/5"
+          ? "border-destructive/50 bg-destructive/5 dark:bg-destructive/10"
           : "border-dashed border-border hover:border-primary/50"
       }`}
     >
@@ -107,7 +107,7 @@ function FileSlotRow({
         {/* Status icon */}
         <div className="mt-0.5 shrink-0">
           {filled ? (
-            <CheckCircle2 size={18} className="text-emerald-500" />
+            <CheckCircle2 size={18} className="text-emerald-500 dark:text-emerald-300" />
           ) : state.error ? (
             <AlertCircle size={18} className="text-destructive" />
           ) : (
@@ -128,7 +128,7 @@ function FileSlotRow({
           )}
 
           {filled && state.file ? (
-            <p className="text-xs text-emerald-700 mt-1 font-medium truncate">
+            <p className="text-xs text-emerald-700 dark:text-emerald-200 mt-1 font-medium truncate">
               {state.file.name} · {(state.file.size / 1024 / 1024).toFixed(1)} MB
             </p>
           ) : state.error ? (

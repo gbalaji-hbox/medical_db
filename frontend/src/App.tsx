@@ -4,7 +4,7 @@ import { AuthProvider } from "@/store/auth";
 import { ThemeProvider } from "@/store/theme";
 import { Layout } from "@/components/layout/Layout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { Toaster } from "@/components/ui/toaster";
+import { SessionTimeoutWarning } from "@/components/SessionTimeoutWarning";
 
 import { LoginPage } from "@/pages/Login";
 import { DashboardPage } from "@/pages/Dashboard";
@@ -15,6 +15,7 @@ import { ApiKeysPage } from "@/pages/admin/ApiKeys";
 import { UsersPage } from "@/pages/admin/Users";
 import { AuditPage } from "@/pages/admin/Audit";
 import { AuditDetailPage } from "@/pages/admin/AuditDetail";
+import { Toaster } from "@/components/ui/toaster";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -31,6 +32,7 @@ export default function App() {
       <ThemeProvider>
       <AuthProvider>
         <BrowserRouter basename={import.meta.env.BASE_URL}>
+          <SessionTimeoutWarning />
           <Routes>
             <Route path="/login" element={<LoginPage />} />
 
