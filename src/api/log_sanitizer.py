@@ -26,6 +26,18 @@ _SAFE_RE = re.compile(
     r"[A-Za-z ]+combined:\s*\d[\d,]*|"
     r"Processed\s+\d[\d,]*\s+rows|"
     r"Filtered\s+from\s+\d[\d,]*\s+to\s+\d[\d,]*\s+rows|"
+    # ── Python tracebacks & error lines ──────────────────────────────────────
+    r"Traceback \(most recent call last\):|"
+    r"\s+File \"[^\"]+\",\s+line \d+.*|"  # File "path", line N, in func
+    r"\s+\^+|"                             # ^^^^ caret markers
+    r"[A-Za-z][A-Za-z0-9_]*Error:|"        # SomeError: (exception class)
+    r"[A-Za-z][A-Za-z0-9_]*Error\b.*|"    # SomeError: message
+    r"[A-Za-z][A-Za-z0-9_]*Exception\b.*|"
+    r"During handling of the above.*|"
+    r"The above exception was.*|"
+    r"Starting main|"
+    r"Loaded (mappings|data)|"
+    r"(EMR grouped|Merged|Input records|Processing done|Filtered|Records output|Saving|Consolidated data saved|Excel formatting applied).*|"
     r"\s*$"                  # blank
     r")",
     re.IGNORECASE,
