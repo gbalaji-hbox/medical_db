@@ -20,9 +20,9 @@ import openpyxl
 
 # Paths
 ROOT = os.environ.get('MEDICAL_DB_ROOT', r'D:\Work_Folder\medical_db')
-PATIENT_FILE = os.path.join(ROOT, 'src', 'SSC', 'Chronic Management Patient Details - 20260403_04-55.csv')
-DIAGNOSIS_FILE = os.path.join(ROOT, 'src', 'SSC', 'Patient Diagnosis Code - 20260403_05-19.csv')
-MEDICATION_FILE = os.path.join(ROOT, 'src', 'SSC', 'Patient_Medication - 20260403_06-03.csv')
+PATIENT_FILE = os.path.join(ROOT, 'src', 'SSC', 'Chronic Management Patient Details - 20260426_22-55.csv')
+DIAGNOSIS_FILE = os.path.join(ROOT, 'src', 'SSC', 'Patient Diagnosis Code - 20260426_23-06.csv')
+MEDICATION_FILE = os.path.join(ROOT, 'src', 'SSC', 'Patient_Medication - 20260427_00-47.csv')
 PRESCRIPTION_FILE = os.path.join(ROOT, 'src', 'SSC', 'template', 'api_prescriptioncauselist_202603101243.csv')
 TEMPLATE_FILE = os.path.join(ROOT, 'src', 'SSC', 'template', 'consolidated_view-template - new.xlsx')
 # Output file with date_time
@@ -91,11 +91,159 @@ CAUSE_TO_COMORBIDITY = {
 
 COMORBIDITY_TO_CAUSE = {v: k for k, v in CAUSE_TO_COMORBIDITY.items()}
 
+PRIMARY_DX_DISALLOWED = {
+    "ASTHMA",
+    "ANGINA PECTORIS",
+    "CHRONIC KIDNEY DISEASE", 
+    "COPD",
+    "DIABETES",
+    "DYSPNEA",
+    "OBESITY",
+    "SLEEP APNEA",
+}
+
+DESCRIPTION_KEYWORDS = {
+    "CORONARY ARTERY DISEASE": [
+        "coronary artery disease",
+        "athscl heart disease",
+        "atherosclerotic heart disease",
+        "ischemic heart",
+        "aortocoronary bypass",
+    ],
+    "ARRHYTHMIA": [
+        "arrhythmia",
+        "atrial fibrillation",
+        "atrial flutter",
+        "tachycardia",
+        "bradycardia",
+        "palpitations",
+    ],
+    "CONGESTIVE HEART FAILURE": [
+        "heart failure",
+        "congestive heart failure",
+        "systolic heart failure",
+        "diastolic heart failure",
+    ],
+    "PERIPHERAL VASCULAR": [
+        "peripheral vascular",
+        "peripheral angiopath",
+        "venous insufficiency",
+    ],
+    "VALVULAR HEART": [
+        "valve",
+        "valvular",
+        "mitral",
+        "aortic",
+        "tricuspid",
+        "prosthetic heart valve",
+    ],
+    "CEREBROVASCULAR ACCIDENT": [
+        "cerebrovascular",
+        "stroke",
+        "transient cerebral ischemic",
+        "carotid",
+    ],
+    "HYPERLIPIDEMIA": [
+        "hyperlipidemia",
+        "hypercholesterolemia",
+        "mixed hyperlipidemia",
+    ],
+    "ANGINA PECTORIS": [
+        "angina",
+        "precordial pain",
+        "chest pain",
+    ],
+    "HYPOTENSION": [
+        "hypotension",
+        "orthostatic hypotension",
+    ],
+    "HYPERTENSION": [
+        "hypertension",
+        "hypertensive heart disease",
+    ],
+    "OBESITY": [
+        "obesity",
+    ],
+    "DIABETES": [
+        "diabetes",
+        "type 2 diabetes",
+        "type 1 diabetes",
+    ],
+    "CHRONIC KIDNEY DISEASE": [
+        "chronic kidney disease",
+        "renal failure",
+    ],
+    "COPD": [
+        "copd",
+        "chronic obstructive pulmonary disease",
+        "chronic bronchitis",
+    ],
+    "RESPIRATORY FAILURE": [
+        "respiratory failure",
+    ],
+    "ASTHMA": [
+        "asthma",
+    ],
+    "SLEEP APNEA": [
+        "sleep apnea",
+    ],
+    "DYSPNEA": [
+        "dyspnea",
+        "shortness of breath",
+    ],
+    "EMPHYSEMA": [
+        "emphysema",
+    ],
+    "BRONCHIECTASIS": [
+        "bronchiectasis",
+    ],
+    "HYPOXEMIA": [
+        "hypoxemia",
+        "hypoxia",
+    ],
+}
+
+MEDICATION_KEYWORDS = {
+    "HYPERTENSION": [
+        "lisinopril", "amlodipine", "losartan", "hydrochlorothiazide", "metoprolol", "atenolol", "furosemide", "spironolactone",
+    ],
+    "DIABETES": [
+        "metformin", "glipizide", "glyburide", "insulin", "januvia", "farxiga",
+    ],
+    "HYPERLIPIDEMIA": [
+        "atorvastatin", "simvastatin", "rosuvastatin", "pravastatin", "lovastatin",
+    ],
+    "CONGESTIVE HEART FAILURE": [
+        "furosemide", "spironolactone", "carvedilol", "metoprolol", "lisinopril", "enalapril", "digoxin",
+    ],
+    "ARRHYTHMIA": [
+        "amiodarone", "flecainide", "propafenone", "sotalol", "dofetilide", "digoxin",
+    ],
+    "ASTHMA": [
+        "albuterol", "fluticasone", "budesonide", "montelukast", "salmeterol",
+    ],
+    "COPD": [
+        "tiotropium", "ipratropium", "fluticasone", "salmeterol", "theophylline",
+    ],
+}
+
 def load_icd_to_cause():
     """Load ICD to cause mapping from prescription file."""
     df = pd.read_csv(PRESCRIPTION_FILE)
     icd_to_cause = {}
     prefix_to_cause = {}
+    comorbidity_to_icd = {}
+    
+    # Default ICD codes for causes not in prescription file
+    default_icd_codes = {
+        'Hypotension': 'I95.9',
+        'Type 2 Diabetes': 'E11.9',  # Though it might be in file as Type 2 Diabetes
+        'Chronic Kidney': 'N18.9',
+        'Dyspnea': 'R06.00',
+        'Chronic Bronchitis': 'J41.0',
+        'Emphysema ': 'J43.9',  # Already in file
+    }
+    
     for _, row in df.iterrows():
         icd = str(row.get('icd_code', '')).strip()
         cause = str(row.get('cause', '')).strip()
@@ -107,7 +255,24 @@ def load_icd_to_cause():
                 prefix_to_cause[prefix] = cause
             else:
                 prefix_to_cause[icd] = cause
-    return icd_to_cause, prefix_to_cause
+            
+            # Map comorbidity to ICD
+            if cause in CAUSE_TO_COMORBIDITY:
+                comorbidity = CAUSE_TO_COMORBIDITY[cause]
+                comorbidity_to_icd[comorbidity] = icd
+    
+    # Add defaults for missing causes
+    for cause, icd in default_icd_codes.items():
+        if cause not in icd_to_cause:
+            icd_to_cause[icd] = cause
+            prefix = icd[:3]
+            prefix_to_cause[prefix] = cause
+        if cause in CAUSE_TO_COMORBIDITY:
+            comorbidity = CAUSE_TO_COMORBIDITY[cause]
+            if comorbidity not in comorbidity_to_icd:
+                comorbidity_to_icd[comorbidity] = icd
+    
+    return icd_to_cause, prefix_to_cause, comorbidity_to_icd
 
 def classify_insurance(ins_text: str) -> str:
     if not ins_text or pd.isna(ins_text):
@@ -154,8 +319,9 @@ def parse_provider_name(full_name: str) -> str:
     else:
         return str(full_name).strip()
 
-def map_comorbidities(icds: List[str], prefix_to_cause: Dict[str, str]) -> tuple[Dict[str, str], bool, Dict[str, str]]:
+def map_comorbidities(icds: List[str], descriptions: List[str], medications: str, prefix_to_cause: Dict[str, str], comorbidity_to_icd: Dict[str, str]) -> tuple[Dict[str, str], bool, Dict[str, str]]:
     """Map ICD codes to causes using prefix matching, then to comorbidity flags.
+    Also check descriptions and medications for keyword matches.
     
     Returns:
     - comorbidity flags dict
@@ -166,6 +332,7 @@ def map_comorbidities(icds: List[str], prefix_to_cause: Dict[str, str]) -> tuple
     has_match = False
     comorbidity_to_raw_icd = {}
     
+    # First, check ICD codes
     for icd in icds:
         icd = str(icd).strip()
         if not icd:
@@ -181,10 +348,37 @@ def map_comorbidities(icds: List[str], prefix_to_cause: Dict[str, str]) -> tuple
                 if comorbidity not in comorbidity_to_raw_icd:
                     comorbidity_to_raw_icd[comorbidity] = icd
     
+    # Second, check descriptions for keywords
+    for desc in descriptions:
+        desc = str(desc).strip().lower()
+        if not desc:
+            continue
+        for comorbidity, keywords in DESCRIPTION_KEYWORDS.items():
+            if any(keyword in desc for keyword in keywords):
+                causes.add(COMORBIDITY_TO_CAUSE.get(comorbidity, ""))
+                has_match = True
+                if comorbidity not in comorbidity_to_raw_icd:
+                    comorbidity_to_raw_icd[comorbidity] = comorbidity_to_icd.get(comorbidity, "")
+    
+    # Third, check medications for keywords
+    med_text = str(medications).strip().lower()
+    if med_text:
+        for comorbidity, keywords in MEDICATION_KEYWORDS.items():
+            if any(keyword in med_text for keyword in keywords):
+                causes.add(COMORBIDITY_TO_CAUSE.get(comorbidity, ""))
+                has_match = True
+                if comorbidity not in comorbidity_to_raw_icd:
+                    comorbidity_to_raw_icd[comorbidity] = comorbidity_to_icd.get(comorbidity, "")
+    
     flags = {col: 'NO' for col in COMORBIDITY_COLUMNS}
     for cause in causes:
         if cause in CAUSE_TO_COMORBIDITY:
             flags[CAUSE_TO_COMORBIDITY[cause]] = 'YES'
+    
+    # Ensure all YES comorbidities have ICD codes from prescription if not already set
+    for col in COMORBIDITY_COLUMNS:
+        if flags[col] == 'YES' and col not in comorbidity_to_raw_icd:
+            comorbidity_to_raw_icd[col] = comorbidity_to_icd.get(col, '')
     
     return flags, has_match, comorbidity_to_raw_icd
 
@@ -203,12 +397,13 @@ def consolidate_medications(med_list: List[str]) -> str:
 def main():
     print("Starting SSC consolidation")
     # Load mappings
-    icd_to_cause, prefix_to_cause = load_icd_to_cause()
+    icd_to_cause, prefix_to_cause, comorbidity_to_icd = load_icd_to_cause()
     print("Loaded mappings")
 
     # Load data
     patient_df = pd.read_csv(PATIENT_FILE, skiprows=1)  # Skip REPORT NAME
     patient_df.columns = patient_df.columns.str.strip()
+    print(f"Loaded patient_df: {len(patient_df)} rows")
     # Combine duplicates by patientid, taking first non-empty value for each field
     def combine_first_non_empty(series):
         for val in series:
@@ -217,11 +412,14 @@ def main():
         return ''
     
     patient_df = patient_df.groupby('patientid').agg(combine_first_non_empty).reset_index()
+    print(f"After dedup patient_df: {len(patient_df)} rows")
     diag_df = pd.read_csv(DIAGNOSIS_FILE, skiprows=1)
     diag_df.columns = diag_df.columns.str.strip()
+    print(f"Loaded diag_df: {len(diag_df)} rows")
     med_df = pd.read_csv(MEDICATION_FILE, skiprows=1)
     med_df.columns = med_df.columns.str.strip()
     med_df.rename(columns={'Patient chart Id': 'patientid'}, inplace=True)
+    print(f"Loaded med_df: {len(med_df)} rows")
     print("Loaded data")
 
     # Group diagnosis and medication by patientid
@@ -229,10 +427,12 @@ def main():
         'icd10encounterdiagcode': list,
         'icd10encounterdiagdescr': list
     }).reset_index()
+    print(f"Diag grouped: {len(diag_grouped)} unique patientids")
     med_grouped = med_df.groupby('patientid').agg({
         'med names': lambda x: '; '.join([str(m) for m in x if pd.notna(m)]),
         'encounter_provider': lambda x: ', '.join(set([str(p) for p in x if pd.notna(p)]))
     }).reset_index()
+    print(f"Med grouped: {len(med_grouped)} unique patientids")
 
     # Merge patient with diagnosis and medication
     df = patient_df.merge(diag_grouped, on='patientid', how='left')
@@ -252,26 +452,41 @@ def main():
         parsed_name = parse_name(row['patient name'])
         
         icds = row.get('icd10encounterdiagcode', [])
-        comorbidities, has_icd_match, comorbidity_to_raw_icd = map_comorbidities(icds, prefix_to_cause)
+        descriptions = row.get('icd10encounterdiagdescr', [])
+        medications = row.get('med names', '')
+        comorbidities, has_icd_match, comorbidity_to_raw_icd = map_comorbidities(icds, descriptions, medications, prefix_to_cause, comorbidity_to_icd)
         consolidated_med = consolidate_medications([row.get('med names', '')])
 
-        # Primary and secondary dx: prioritize heart-related for primary
+        # Primary and secondary dx: prioritize heart-related, suppress disallowed
         true_comorbidities = [col for col in COMORBIDITY_COLUMNS if comorbidities[col] == 'YES']
-        # Sort to prioritize heart-related first
-        true_comorbidities.sort(key=lambda x: (x not in HEART_RELATED, COMORBIDITY_COLUMNS.index(x)))
+        
+        # Separate allowed and disallowed
+        allowed_comorbidities = [c for c in true_comorbidities if c not in PRIMARY_DX_DISALLOWED]
+        disallowed_comorbidities = [c for c in true_comorbidities if c in PRIMARY_DX_DISALLOWED]
+        
         primary_dx = ''
         secondary_dx = ''
         primary_icd = ''
         secondary_icd = ''
-        if true_comorbidities:
-            primary_comorb = true_comorbidities[0]
-            primary_dx = primary_comorb  # Use comorbidity header
-            primary_icd = comorbidity_to_raw_icd.get(primary_comorb, '')
+        
+        if allowed_comorbidities:
+            # Sort allowed by heart-related priority
+            allowed_comorbidities.sort(key=lambda x: (x not in HEART_RELATED, COMORBIDITY_COLUMNS.index(x)))
+            primary_dx = allowed_comorbidities[0]
+            primary_icd = comorbidity_to_raw_icd.get(primary_dx, comorbidity_to_icd.get(primary_dx, ''))
+            
+            if len(allowed_comorbidities) > 1:
+                secondary_dx = allowed_comorbidities[1]
+                secondary_icd = comorbidity_to_raw_icd.get(secondary_dx, comorbidity_to_icd.get(secondary_dx, ''))
+        elif true_comorbidities:
+            # If no allowed, use first available (like HCT)
+            true_comorbidities.sort(key=lambda x: (x not in HEART_RELATED, COMORBIDITY_COLUMNS.index(x)))
+            primary_dx = true_comorbidities[0]
+            primary_icd = comorbidity_to_raw_icd.get(primary_dx, comorbidity_to_icd.get(primary_dx, ''))
             
             if len(true_comorbidities) > 1:
-                secondary_comorb = true_comorbidities[1]
-                secondary_dx = secondary_comorb  # Use comorbidity header
-                secondary_icd = comorbidity_to_raw_icd.get(secondary_comorb, '')
+                secondary_dx = true_comorbidities[1]
+                secondary_icd = comorbidity_to_raw_icd.get(secondary_dx, comorbidity_to_icd.get(secondary_dx, ''))
 
         # Construct full name
         full_name = f"{parsed_name['first']} {parsed_name['middle']} {parsed_name['last']}".strip()
@@ -333,6 +548,7 @@ def main():
         output_rows.append((output_row, has_icd_match))
 
     print("Processing done, creating dataframe")
+    print(f"Processed rows: {len(output_rows)}")
     # Filter: only patients with primary insurance AND primary DX, and not self-pay only
     def is_valid_insurance(row):
         primary_ins = row['PRIMARY INSURANCE']
@@ -343,6 +559,40 @@ def main():
     
     filtered_rows = [row for row, has_match in output_rows if row['PRIMARY INSURANCE'] and row['PRIMARY DX'] and is_valid_insurance(row)]
     print(f"Filtered from {len(output_rows)} to {len(filtered_rows)} rows")
+    
+    # Analyze comorbidity suppression
+    patients_with_allowed_comorbidities = 0
+    patients_only_suppressed = 0
+    
+    for row in filtered_rows:
+        has_allowed = False
+        has_suppressed = False
+        for col in COMORBIDITY_COLUMNS:
+            if row[col] == 'YES':
+                if col in PRIMARY_DX_DISALLOWED:
+                    has_suppressed = True
+                else:
+                    has_allowed = True
+        
+        if has_allowed:
+            patients_with_allowed_comorbidities += 1
+        elif has_suppressed:
+            patients_only_suppressed += 1
+    
+    print(f"Patients with non-suppressed comorbidities: {patients_with_allowed_comorbidities}")
+    print(f"Patients with only suppressed comorbidities: {patients_only_suppressed}")
+    
+    # Analyze primary DX distribution
+    heart_related_primary = sum(1 for row in filtered_rows if row['PRIMARY DX'] in HEART_RELATED)
+    non_heart_primary = sum(1 for row in filtered_rows if row['PRIMARY DX'] and row['PRIMARY DX'] not in HEART_RELATED)
+    print(f"Primary DX: {heart_related_primary} heart-related, {non_heart_primary} non-heart-related")
+    
+    # Analyze filter reasons
+    no_insurance = sum(1 for row, _ in output_rows if not row['PRIMARY INSURANCE'])
+    no_dx = sum(1 for row, _ in output_rows if not row['PRIMARY DX'])
+    invalid_insurance = sum(1 for row, _ in output_rows if row['PRIMARY INSURANCE'] and row['PRIMARY DX'] and not is_valid_insurance(row))
+    print(f"Filtered out: {no_insurance} no primary insurance, {no_dx} no primary DX, {invalid_insurance} invalid insurance")
+    
     print(f"Records output: {len(filtered_rows)} records")
     
     # Create output DataFrame
