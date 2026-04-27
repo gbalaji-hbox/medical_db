@@ -76,7 +76,7 @@ async function consolidateViaAPI(outputDir: string, reportName: string, session:
     await new Promise(r => setTimeout(r, 15_000));
     const pollRes = await fetch(`${API_BASE}/api/xhi/jobs/${job_id}`, { headers: API_HEADERS });
     if (!pollRes.ok) throw new Error(`XHI poll failed ${pollRes.status}`);
-    const job = await pollRes.json() as { status: string; error?: string };
+    const job = await pollRes.json() as { status: string; error?: string; log?: string };
     status = job.status;
     if (status === 'running' || status === 'pending') {
       console.log(`[${session}] Job running      — ${job_id} [${status}]`);
@@ -84,6 +84,8 @@ async function consolidateViaAPI(outputDir: string, reportName: string, session:
       console.log(`[${session}] Job completed    — ${job_id}`);
       break;
     } else if (status === 'failed' || status === 'error') {
+      console.error(`[${session}] ✖ Job failed — ${job_id}`);
+      if (job.log) console.error(`[${session}] Pipeline output:\n${job.log}`);
       throw new Error(`XHI pipeline failed: ${job.error ?? status}`);
     } else {
       console.log(`[${session}] Job status       — ${job_id} [${status}]`);
