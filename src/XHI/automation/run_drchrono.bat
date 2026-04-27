@@ -31,6 +31,7 @@ if not exist "%RAW_DIR%"    mkdir "%RAW_DIR%"
 if not exist "%OUTPUT_DIR%" mkdir "%OUTPUT_DIR%"
 
 :: ── Working directory ─────────────────────────────────────────────────────────
+set ORIGIN_DIR=%CD%
 set WORK_DIR=%TEMP%\drchrono_run
 if exist "%WORK_DIR%" rmdir /s /q "%WORK_DIR%"
 mkdir "%WORK_DIR%"
@@ -49,7 +50,7 @@ if not exist drchrono-submit.ts (
 
 :: ── Install dependency (NO npm init needed) ───────────────────────────────────
 echo Installing dependencies...
-call npm install @balaji-g42/libretto --yes
+call npm install @balaji-g42/libretto @types/node --yes
 
 if errorlevel 1 (
   echo ERROR: npm install failed
@@ -86,8 +87,7 @@ for %%f in ("%WORK_DIR%\output\drchrono\*.csv") do copy "%%f" "%RAW_DIR%\" >nul
 for %%f in ("%WORK_DIR%\output\drchrono\*.xlsx") do copy "%%f" "%OUTPUT_DIR%\" >nul
 
 :: ── Cleanup ───────────────────────────────────────────────────────────────────
-del drchrono-submit.ts >nul 2>&1
-cd /d "%TEMP%"
+cd /d "%ORIGIN_DIR%"
 rmdir /s /q "%WORK_DIR%"
 
 echo.
