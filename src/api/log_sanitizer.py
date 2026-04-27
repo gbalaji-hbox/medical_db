@@ -7,6 +7,8 @@ placeholder. Also redact high-risk token patterns inside safe lines.
 
 import re
 
+from src.api.config import SANITIZE_LOGS
+
 _SAFE_RE = re.compile(
     r"^("
     r"=+.*=+|"              # === headers ===
@@ -30,9 +32,9 @@ _SAFE_RE = re.compile(
     r"Traceback \(most recent call last\):|"
     r"\s+File \"[^\"]+\",\s+line \d+.*|"  # File "path", line N, in func
     r"\s+\^+|"                             # ^^^^ caret markers
-    r"[A-Za-z][A-Za-z0-9_]*Error:|"        # SomeError: (exception class)
-    r"[A-Za-z][A-Za-z0-9_]*Error\b.*|"    # SomeError: message
-    r"[A-Za-z][A-Za-z0-9_]*Exception\b.*|"
+    r"[A-Za-z][A-Za-z0-9_.]*Error:|"        # SomeError: or module.SomeError:
+    r"[A-Za-z][A-Za-z0-9_.]*Error\b.*|"    # SomeError: message
+    r"[A-Za-z][A-Za-z0-9_.]*Exception\b.*|"
     r"During handling of the above.*|"
     r"The above exception was.*|"
     r"Starting main|"
@@ -54,6 +56,10 @@ _PHI_RE = [
 
 def sanitize_log(raw_log: str, max_chars: int = 8000) -> str:
     """Return a PHI-scrubbed version of raw subprocess output."""
+    if not SANITIZE_LOGS:
+        result = raw_log
+        return result[-max_chars:] if len(result) > max_chars else result
+
     lines = raw_log.splitlines()
     out: list[str] = []
 

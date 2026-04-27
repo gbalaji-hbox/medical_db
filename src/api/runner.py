@@ -4,12 +4,15 @@ captures output, applies PHI scrubbing, encrypts the output file,
 enforces retention policy, and cleans up input files.
 """
 
+import logging
 import os
 import subprocess
 import threading
 import time
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 from src.api.config import (
     JOB_TTL_SECONDS,
@@ -91,6 +94,11 @@ def _run(job: Job) -> None:
                 cleanup_inputs(job.module)
             else:
                 job.status = "failed"
+                logger.error(
+                    "[%s] job %s failed (rc=%s):\n%s",
+                    job.module, job.job_id, result.returncode,
+                    (result.stdout + "\n" + result.stderr).strip(),
+                )
 
         except subprocess.TimeoutExpired as exc:
             job.status = "failed"
