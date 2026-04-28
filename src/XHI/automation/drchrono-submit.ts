@@ -155,9 +155,20 @@ export default workflow<void, Output>(
     console.log(`[${session}] Advanced report queued — status ${advR.status()}: ${(await advR.text()).slice(0, 100)}`);
 
     // ── 3. MEDICATION REPORT — 1-year range ──────────────────────────────────
+    // Export requires a POST with CSRF token (GET returns HTML login page)
     console.log(`[${session}] Fetching Medication Report CSV`);
-    const medR       = await page.context().request.get(`${BASE_URL}/analytics/medication_report/export_csv?page=1&prescribed_start=${encodeURIComponent(dateOffsetMMDDYYYY(1))}&prescribed_end=${encodeURIComponent(today)}`, { timeout: 30_000 });
-    const medCsvText = await medR.text();
+    await page.goto(`${BASE_URL}/analytics/medication_report`, { waitUntil: 'domcontentloaded' });
+    const medCsrf = await page.locator('input[name="csrfmiddlewaretoken"]').first().inputValue();
+    const medExportUrl = `${BASE_URL}/analytics/medication_report/export_csv?page=1&prescribed_start=${encodeURIComponent(dateOffsetMMDDYYYY(1))}&prescribed_end=${encodeURIComponent(today)}`;
+    const medCsvText = await page.evaluate(async ({ url, csrf }: { url: string; csrf: string }) => {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'csrfmiddlewaretoken=' + encodeURIComponent(csrf),
+      });
+      if (!r.ok) throw new Error(`medication export failed ${r.status}`);
+      return r.text();
+    }, { url: medExportUrl, csrf: medCsrf });
     const medFilename = `medication_report_${name}.csv`;
     const medFilePath = path.join(OUTPUT_DIR, medFilename);
     fs.writeFileSync(medFilePath, medCsvText);
@@ -165,9 +176,20 @@ export default workflow<void, Output>(
     console.log(`[${session}] Downloaded        : ${medFilename} (${medCsvText.length.toLocaleString()} bytes)`);
 
     // ── 4. PROBLEM REPORT — 5-year range ─────────────────────────────────────
+    // Export requires a POST with CSRF token and diagnosed_start/diagnosed_end params
     console.log(`[${session}] Fetching Problem Report CSV`);
-    const probR       = await page.context().request.get(`${BASE_URL}/analytics/problem_report/export_csv?page=1&start_date=${encodeURIComponent(dateOffsetMMDDYYYY(5))}&end_date=${encodeURIComponent(today)}`, { timeout: 30_000 });
-    const probCsvText = await probR.text();
+    await page.goto(`${BASE_URL}/analytics/problem_report`, { waitUntil: 'domcontentloaded' });
+    const probCsrf = await page.locator('input[name="csrfmiddlewaretoken"]').first().inputValue();
+    const probExportUrl = `${BASE_URL}/analytics/problem_report/export_csv?page=1&diagnosed_start=${encodeURIComponent(dateOffsetMMDDYYYY(5))}&diagnosed_end=${encodeURIComponent(today)}`;
+    const probCsvText = await page.evaluate(async ({ url, csrf }: { url: string; csrf: string }) => {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': csrf, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'csrfmiddlewaretoken=' + encodeURIComponent(csrf),
+      });
+      if (!r.ok) throw new Error(`problem export failed ${r.status}`);
+      return r.text();
+    }, { url: probExportUrl, csrf: probCsrf });
     const probFilename = `problem_report_${name}.csv`;
     const probFilePath = path.join(OUTPUT_DIR, probFilename);
     fs.writeFileSync(probFilePath, probCsvText);
