@@ -55,6 +55,10 @@ src/CIM/*.xlsx
 src/CIM/*.xls
 src/SSC/*.csv
 src/XHI/*.csv
+src/ACNY/*.xlsx
+src/ACNY/*.xls
+src/ACNY/*.csv
+src/ACNY/*.rdp
 
 # Pipeline outputs and intermediates
 src/*/output/
