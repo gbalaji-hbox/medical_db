@@ -727,9 +727,15 @@ def build_consolidated(all_records, phone_map, visit_map, carrier_map, pcp_map,
         if not primary_dx and icd_set:
             for code in sorted(icd_set):
                 desc = icd_desc.get(code.upper(), "")
-                if desc:
-                    primary_dx  = desc
-                    primary_icd = code
+                if not desc:
+                    continue
+                desc_lower = desc.lower()
+                for col in ACNY_COMORBIDITY_COLUMNS:
+                    if any(kw in desc_lower for kw in ACNY_DX_KEYWORDS[col]):
+                        primary_dx  = col
+                        primary_icd = code
+                        break
+                if primary_dx:
                     break
 
         # SECONDARY DX / ICD — next YES comorbidity after primary
@@ -797,10 +803,9 @@ def build_consolidated(all_records, phone_map, visit_map, carrier_map, pcp_map,
         row["CLINIC FACILITY"]     = CLINIC_FACILITY
         row["PRIMARY CARE PROVIDER"] = pcp_map.get(r["chart_no"], "")
 
-        # Clinic-specific comorbidities based on PRIMARY DX keyword match
-        dx_lower = primary_dx.lower()
+        # Clinic-specific comorbidities: YES if primary or secondary DX is that column
         for col in ACNY_COMORBIDITY_COLUMNS:
-            row[col] = "YES" if any(kw in dx_lower for kw in ACNY_DX_KEYWORDS[col]) else "NO"
+            row[col] = "YES" if primary_dx == col or secondary_dx == col else "NO"
 
         rows.append(row)
 
