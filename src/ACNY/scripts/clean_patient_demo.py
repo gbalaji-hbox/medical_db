@@ -89,6 +89,43 @@ COMORBIDITY_COLUMNS = [
     "BRONCHIECTASIS", "HYPOXEMIA",
 ]
 
+# Clinic-specific comorbidity columns derived from PRIMARY DX descriptions
+ACNY_COMORBIDITY_COLUMNS = [
+    "ALLERGIC RHINITIS / SINUSITIS",
+    "SKIN ALLERGY",
+    "ALLERGIC CONJUNCTIVITIS",
+    "IMMUNODEFICIENCY",
+    "FOOD ALLERGY / ANAPHYLAXIS",
+]
+
+# Lowercase keyword fragments → new comorbidity column
+ACNY_DX_KEYWORDS = {
+    "ALLERGIC RHINITIS / SINUSITIS": [
+        "allergic rhinitis", "seasonal allergic rhinitis", "vasomotor rhinitis",
+        "chronic rhinitis", "sneezing", "postnasal drip", "nasal congestion",
+        "sinusitis", "disorders of nose",
+    ],
+    "SKIN ALLERGY": [
+        "atopic dermatitis", "eczema", "eczematous", "dermatitis", "urticaria",
+        "pruritus", "rash", "skin eruption", "intrinsic (allergic)", "xerosis",
+    ],
+    "ALLERGIC CONJUNCTIVITIS": [
+        "conjunctivitis", "dry eye",
+    ],
+    "IMMUNODEFICIENCY": [
+        "immunodeficiency", "immunoglobulin", "immunoglob", "mast cell",
+        "complement", "immune mechanism", "antibody defic", "hypogammaglobulin",
+        "common variable", "selective deficiency of immunoglobulin",
+    ],
+    "FOOD ALLERGY / ANAPHYLAXIS": [
+        "food allergy", "allergy to peanut", "anaphylactic", "bee allergy",
+        "angioedema", "enterocolitis", "celiac", "malabsorption due to intolerance",
+        "lactose", "lactase deficiency",
+    ],
+}
+
+DATE_COLUMNS = ["DATE OF BIRTH", "LAST SEEN DATE", "NEXT APPT"]
+
 TEMPLATE_COLUMNS = [
     "EMR ID", "PATIENT EMR NAME", "FIRST NAME", "MIDDLE NAME", "LAST NAME",
     "PATIENT FULL NAME", "DATE OF BIRTH", "GENDER", "STREET ADDRESS", "CITY",
@@ -108,6 +145,8 @@ TEMPLATE_COLUMNS = [
     "PRIMARY DX", "SECONDARY DX", "PRIMARY ICD", "SECONDARY ICD",
     "LAST SEEN DATE", "NEXT APPT", "PROVIDER DATA", "PROVIDER NAME",
     "CLINIC FACILITY", "PRIMARY CARE PROVIDER", "MEDICATIONS", "ENCOUNTER NOTES",
+    "ALLERGIC RHINITIS / SINUSITIS", "SKIN ALLERGY", "ALLERGIC CONJUNCTIVITIS",
+    "IMMUNODEFICIENCY", "FOOD ALLERGY / ANAPHYLAXIS",
 ]
 
 
@@ -355,7 +394,7 @@ def parse_demo_sheet(ws):
                 "email_address":   clean_text(row[4]),
                 "language":        clean_text(row[5]),
                 "sex":             clean_text(row[6]),
-                "birthdate":       excel_serial_to_date(row[7]),
+                "birthdate":       excel_serial_to_dt(row[7]),
             })
             records.append(pending)
             pending = None
@@ -467,8 +506,8 @@ def parse_visit_files(base_dir):
     result = {}
     for chart_no, entry in visit_map.items():
         result[chart_no] = {
-            "last_seen_date": entry["visit_dt"].strftime("%m-%d-%Y") if entry["visit_dt"] else "",
-            "next_appt":      entry["appt_dt"].strftime("%m-%d-%Y") if entry["appt_dt"] else "",
+            "last_seen_date": entry["visit_dt"] if entry["visit_dt"] else None,
+            "next_appt":      entry["appt_dt"] if entry["appt_dt"] else None,
             "insurance":      entry["ins"],
             "insurance_id":   entry["ins_id"],
             "copay":          entry["copay"],
@@ -591,7 +630,7 @@ def parse_future_appointments(fpath):
                 future_map[chart_no] = appt_date
 
     wb.close()
-    return {k: v.strftime("%m-%d-%Y") for k, v in future_map.items()}
+    return {k: datetime(v.year, v.month, v.day) for k, v in future_map.items()}
 
 
 def parse_analysis_of_visits(fpath):
@@ -711,7 +750,7 @@ def build_consolidated(all_records, phone_map, visit_map, carrier_map, pcp_map,
         ins_type = carrier_map.get(ins_name.upper(), "")
         medicare_id = visit.get("insurance_id", "") if "medicare" in ins_type.lower() else ""
 
-        last_seen = visit.get("last_seen_date", "")
+        last_seen = visit.get("last_seen_date", None)   # datetime or None
         raw_provider = r["provider"]
 
         row = {col: "" for col in TEMPLATE_COLUMNS}
@@ -722,7 +761,7 @@ def build_consolidated(all_records, phone_map, visit_map, carrier_map, pcp_map,
         row["MIDDLE NAME"]         = middle
         row["LAST NAME"]           = last
         row["PATIENT FULL NAME"]   = full_name
-        row["DATE OF BIRTH"]       = r["birthdate"]
+        row["DATE OF BIRTH"]       = r["birthdate"]   # datetime object
         row["GENDER"]              = r["sex"]
         row["STREET ADDRESS"]      = street
         row["CITY"]                = r["city"]
@@ -746,17 +785,23 @@ def build_consolidated(all_records, phone_map, visit_map, carrier_map, pcp_map,
         row["SECONDARY DX"]        = secondary_dx
         row["PRIMARY ICD"]         = primary_icd
         row["SECONDARY ICD"]       = secondary_icd
-        row["LAST SEEN DATE"]      = last_seen
+        row["LAST SEEN DATE"]      = last_seen         # datetime object or None
         chart_no_key = r["chart_no"]
         if future_appt_map is not None:
-            next_appt = future_appt_map.get(chart_no_key, "")
+            next_appt = future_appt_map.get(chart_no_key, None)
         else:
-            next_appt = visit.get("next_appt", "") if last_seen else ""
+            next_appt = visit.get("next_appt", None) if last_seen else None
         row["NEXT APPT"]           = next_appt
         row["PROVIDER DATA"]       = raw_provider
         row["PROVIDER NAME"]       = parse_provider_name(raw_provider)
         row["CLINIC FACILITY"]     = CLINIC_FACILITY
         row["PRIMARY CARE PROVIDER"] = pcp_map.get(r["chart_no"], "")
+
+        # Clinic-specific comorbidities based on PRIMARY DX keyword match
+        dx_lower = primary_dx.lower()
+        for col in ACNY_COMORBIDITY_COLUMNS:
+            row[col] = "YES" if any(kw in dx_lower for kw in ACNY_DX_KEYWORDS[col]) else "NO"
+
         rows.append(row)
 
     # Build df with temp column, then drop it
@@ -884,7 +929,7 @@ def main():
     has_insurance   = (df["INSURANCE TYPE"] != "").sum()
     has_medicare    = (df["MEDICARE ID"] != "").sum()
     has_pcp         = (df["PRIMARY CARE PROVIDER"] != "").sum()
-    has_next_appt   = (df["NEXT APPT"] != "").sum()
+    has_next_appt   = df["NEXT APPT"].notna().sum()
     print(f"  PRIMARY ICD populated         : {has_primary_icd}")
     print(f"  SECONDARY ICD populated       : {has_secondary}")
     print(f"  ASTHMA = YES                  : {has_asthma}")
@@ -894,6 +939,24 @@ def main():
     print(f"  NEXT APPT populated            : {has_next_appt}")
 
     df.to_excel(output_path, index=False)
+
+    # Apply MM-DD-YYYY date format to date columns
+    from openpyxl import load_workbook as _lw
+    from openpyxl.styles import numbers as _nums
+    _wb = _lw(output_path)
+    _ws = _wb.active
+    header = [cell.value for cell in _ws[1]]
+    date_fmt = "MM-DD-YYYY"
+    for col_name in DATE_COLUMNS:
+        if col_name in header:
+            col_idx = header.index(col_name) + 1   # 1-based
+            for row_cells in _ws.iter_rows(min_row=2, min_col=col_idx, max_col=col_idx):
+                cell = row_cells[0]
+                if cell.value is not None:
+                    cell.number_format = date_fmt
+    _wb.save(output_path)
+    _wb.close()
+
     print(f"\nOutput written to: {output_path}")
 
 
