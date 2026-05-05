@@ -60,6 +60,13 @@ src/ACNY/*.xls
 src/ACNY/*.csv
 src/ACNY/*.rdp
 
+# HCN raw PHI input files (PDFs) and outputs
+src/HCN/*.PDF
+src/HCN/*.pdf
+src/HCN/*.xlsx
+src/HCN/*.xls
+src/HCN/*.csv
+
 # Pipeline outputs and intermediates
 src/*/output/
 src/*/cleaned/
