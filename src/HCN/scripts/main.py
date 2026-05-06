@@ -43,6 +43,14 @@ DIAG_PDF_PATH = next(
     (f for f in sorted(MODULE_DIR.glob("Detailed*.PDF"))),
     next((f for f in sorted(MODULE_DIR.glob("Detailed*.pdf"))), None),
 )
+DIAG_CODE_PDF_PATH = next(
+    (f for f in sorted(MODULE_DIR.glob("DiagnosisCode*.PDF"))),
+    next((f for f in sorted(MODULE_DIR.glob("DiagnosisCode*.pdf"))), None),
+)
+ALT_DIAG_PDF_PATH = next(
+    (f for f in sorted(MODULE_DIR.glob("AltDiagCode*.PDF"))),
+    next((f for f in sorted(MODULE_DIR.glob("AltDiagCode*.pdf"))), None),
+)
 API_CAUSE_CSV = MODULE_DIR / "template" / "api_prescriptioncauselist_202603101243.csv"
 
 # ---------------------------------------------------------------------------
@@ -1091,7 +1099,7 @@ _DESC_KEYWORDS = {
                                   "carotid"],
     "HYPERLIPIDEMIA":           ["hyperlipidemia", "hypercholesterolemia",
                                   "mixed hyperlipidemia"],
-    "ANGINA PECTORIS":          ["angina", "precordial pain", "chest pain"],
+    "ANGINA PECTORIS":          ["angina pectoris", "precordial pain"],
     "HYPOTENSION":              ["hypotension", "orthostatic hypotension"],
     "HYPERTENSION":             ["hypertension", "hypertensive heart disease"],
 }
@@ -1128,14 +1136,130 @@ def _load_api_mappings(api_csv: Path) -> tuple:
     return exact, prefix, comorb_to_icd
 
 
-def _match_icd(icd: str, exact: dict, prefix: dict) -> str:
+# Nuclear stress test agents and procedure codes → CORONARY ARTERY DISEASE
+# These are billed procedure/drug codes that appear in the diagnosis report
+# and definitively indicate cardiac evaluation.
+# Also covers clear cardiac ICD codes not in the api_prescriptioncauselist.
+_SUPPLEMENTAL_ICD: dict = {
+    # Nuclear stress test agents
+    'J2785': 'CORONARY ARTERY DISEASE',   # Regadenoson / Lexiscan
+    'A9500': 'CORONARY ARTERY DISEASE',   # Cardiolite (Tc99m sestamibi)
+    'A9555': 'CORONARY ARTERY DISEASE',   # Rubidium Rb-82
+    'J1250': 'CONGESTIVE HEART FAILURE',  # Dobutamine (stress echo agent)
+    # Myocardial infarction
+    'I214':  'CORONARY ARTERY DISEASE',   # NSTEMI (normalised, no dot)
+    'I213':  'CORONARY ARTERY DISEASE',   # STEMI other sites
+    'I212':  'CORONARY ARTERY DISEASE',   # STEMI inferior wall
+    'I211':  'CORONARY ARTERY DISEASE',   # STEMI anterior wall
+    'I210':  'CORONARY ARTERY DISEASE',   # STEMI anterior (NOS)
+    'I219':  'CORONARY ARTERY DISEASE',   # AMI unspecified
+    # Cardiomyopathy
+    'I428':  'CONGESTIVE HEART FAILURE',  # Other cardiomyopathy
+    'I420':  'CONGESTIVE HEART FAILURE',  # Dilated cardiomyopathy
+    'I421':  'CONGESTIVE HEART FAILURE',  # Obstructive hypertrophic
+    'I422':  'CONGESTIVE HEART FAILURE',  # Other hypertrophic
+    'I425':  'CONGESTIVE HEART FAILURE',  # Other restrictive
+    # Hypertensive urgency/emergency
+    'I160':  'HYPERTENSION',              # Hypertensive urgency
+    'I161':  'HYPERTENSION',              # Hypertensive emergency
+    # Pulmonary embolism
+    'I2699': 'PERIPHERAL VASCULAR',       # PE without acute cor pulmonale
+    'I269':  'PERIPHERAL VASCULAR',       # PE unspecified
+    # Pericardial / valvular
+    'I3139': 'VALVULAR HEART',            # Pericardial effusion
+    'I3100': 'VALVULAR HEART',            # Acute nonspecific pericarditis
+    # Cardiac symptom / procedure codes that unambiguously indicate cardiology eval
+    'R9431': 'ARRHYTHMIA',               # Abnormal ECG
+    'R9439': 'CORONARY ARTERY DISEASE',  # Abnormal cardiovascular function study
+    'R55':   'ARRHYTHMIA',               # Syncope/collapse (common arrhythmia presentation)
+    'Z01810':'CORONARY ARTERY DISEASE',  # Preprocedural cardiovascular exam
+    'Z01811':'CORONARY ARTERY DISEASE',  # Preprocedural cardiovascular exam, other
+    # Resistant / secondary hypertension
+    'I1A0':  'HYPERTENSION',             # Resistant hypertension
+    'I169':  'HYPERTENSION',             # Hypertensive crisis, unspecified
+    # Rheumatic heart / valve
+    'I050':  'VALVULAR HEART',
+    'I051':  'VALVULAR HEART',
+    'I052':  'VALVULAR HEART',
+    'I060':  'VALVULAR HEART',
+    'I061':  'VALVULAR HEART',
+    'I062':  'VALVULAR HEART',
+    'I080':  'VALVULAR HEART',
+    'I099':  'VALVULAR HEART',
+}
+
+
+def _match_icd(icd: str, exact: dict, prefix: dict,
+               catalog: dict = None, icd9_map: dict = None) -> str:
     norm = icd.strip().upper().replace(' ', '')
     if not norm:
         return ''
     if norm in exact:
         return exact[norm]
-    p3 = norm.replace('.', '')[:3]
-    return prefix.get(p3, '')
+    norm_nodot = norm.replace('.', '')
+    # Supplemental hardcoded cardiac/procedure codes
+    if norm_nodot in _SUPPLEMENTAL_ICD:
+        return _SUPPLEMENTAL_ICD[norm_nodot]
+    if norm in _SUPPLEMENTAL_ICD:
+        return _SUPPLEMENTAL_ICD[norm]
+    # 3-char prefix match from api_prescriptioncauselist
+    p3 = norm_nodot[:3]
+    hit = prefix.get(p3, '')
+    if hit:
+        return hit
+    # ICD-9 → ICD-10 translation via AltDiagCode mapping
+    if icd9_map and norm_nodot in icd9_map:
+        return _match_icd(icd9_map[norm_nodot], exact, prefix)
+    # Full-description fallback via DiagnosisCode catalog
+    if catalog and norm_nodot in catalog:
+        return _desc_comorbidity(catalog[norm_nodot])
+    return ''
+
+
+def _load_diag_code_catalog(pdf_path: Path) -> dict:
+    """
+    Parse DiagnosisCode PDF → dict: normalised ICD code → full description.
+    Used as a fallback when the DiagnosisAnalysis truncates descriptions.
+    """
+    catalog: dict = {}
+    icd10_re = re.compile(r'^[A-Z]\d[A-Z0-9.]*$')
+    skip = {'Both', 'Male', 'Female', 'Active', 'Inactive', 'B', 'M', 'F',
+            'A', 'I', 'Code', 'Class', 'Description', 'Sex', 'Status'}
+    doc = fitz.open(str(pdf_path))
+    for i in range(doc.page_count):
+        lines = [l.strip() for l in doc[i].get_text().splitlines() if l.strip()]
+        for j, line in enumerate(lines):
+            if icd10_re.match(line) and line not in skip:
+                desc = lines[j + 1] if j + 1 < len(lines) and lines[j + 1] not in skip \
+                       and not icd10_re.match(lines[j + 1]) else ''
+                if desc:
+                    norm = line.strip().upper().replace(' ', '').replace('.', '')
+                    catalog[norm] = desc
+    doc.close()
+    print(f"  DiagnosisCode catalog: {len(catalog):,} ICD-10 codes loaded")
+    return catalog
+
+
+def _load_alt_diag_mapping(pdf_path: Path) -> dict:
+    """
+    Parse AltDiagCode PDF → dict: ICD-9 code → ICD-10 code.
+    Allows translating legacy ICD-9 codes found in patient data to ICD-10.
+    """
+    icd9_to_10: dict = {}
+    icd10_re = re.compile(r'^[A-Z]\d[A-Z0-9.]*$')
+    icd9_re  = re.compile(r'^\d{3}\.?\d*$')
+    doc = fitz.open(str(pdf_path))
+    for i in range(doc.page_count):
+        lines = [l.strip() for l in doc[i].get_text().splitlines() if l.strip()]
+        for j, line in enumerate(lines):
+            # ICD-10 code line → next non-skip line is ICD-9 alt code
+            if icd10_re.match(line) and j + 1 < len(lines):
+                alt = lines[j + 1]
+                if icd9_re.match(alt):
+                    icd9_to_10.setdefault(alt.replace('.', ''), line.replace('.', '').upper())
+    doc.close()
+    print(f"  AltDiag mapping: {len(icd9_to_10):,} ICD-9 -> ICD-10 entries")
+    return icd9_to_10
 
 
 def _desc_comorbidity(desc: str) -> str:
@@ -1389,6 +1513,9 @@ def main():
     diag_patients            = parse_diag_csv(diag_csv)    if diag_csv  else {}
     exact_icd, prefix_icd, comorb_to_icd = _load_api_mappings(API_CAUSE_CSV)
 
+    diag_catalog = _load_diag_code_catalog(DIAG_CODE_PDF_PATH) if DIAG_CODE_PDF_PATH and DIAG_CODE_PDF_PATH.exists() else {}
+    icd9_map     = _load_alt_diag_mapping(ALT_DIAG_PDF_PATH)   if ALT_DIAG_PDF_PATH  and ALT_DIAG_PDF_PATH.exists()  else {}
+
     print(f"  Appointments:  {len(appt_patients):,} patients")
     print(f"  Medications:   {len(drug_patients):,} patients")
     print(f"  Diagnoses:     {len(diag_patients):,} patients")
@@ -1404,7 +1531,14 @@ def main():
     ws.append(TEMPLATE_COLS)   # header row
 
     appt_written = meds_written = comorb_written = 0
-    no_primary_dx_skipped = 0
+
+    _ANALYSIS_START = date(2025, 1, 1)
+    _ANALYSIS_END   = date.today()
+
+    # last-visit buckets: [in_range_valid, in_range_disallowed, in_range_no_dx,
+    #                       out_range_valid, out_range_disallowed, out_range_no_dx]
+    lv = {'in_valid': 0, 'in_disallowed': 0, 'in_no_dx': 0,
+          'out_valid': 0, 'out_disallowed': 0, 'out_no_dx': 0}
 
     with open(csv_path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f)
@@ -1444,7 +1578,7 @@ def main():
                 flags = {c: 'NO' for c in _COMORBIDITY_COLUMNS}
                 icd_for_comorb = {}
                 for icd, desc in icd_map.items():
-                    hit = _match_icd(icd, exact_icd, prefix_icd)
+                    hit = _match_icd(icd, exact_icd, prefix_icd, diag_catalog, icd9_map)
                     if not hit and desc:
                         hit = _desc_comorbidity(desc)
                     if hit:
@@ -1460,9 +1594,9 @@ def main():
                     row['SECONDARY ICD'] = icd_for_comorb.get(sec, '')
                     comorb_written += 1
 
-            # Fallback: ICD mapping found only disallowed comorbidities as primary DX
-            # → re-infer from medications to find a heart-relevant non-disallowed comorbidity
-            if pri in _PRIMARY_DX_DISALLOWED and drug_rec:
+            # Fallback: no mappable DX from ICD (e.g. only chest pain / symptom codes)
+            # OR ICD resolved only to disallowed comorbidities → try medications instead
+            if (not pri or pri in _PRIMARY_DX_DISALLOWED) and drug_rec:
                 all_drugs = drug_rec['current'] if drug_rec['current'] else drug_rec['all']
                 inferred = next(
                     (c for drug in all_drugs
@@ -1474,10 +1608,21 @@ def main():
                     row['PRIMARY ICD'] = comorb_to_icd.get(inferred, '')
                     pri = inferred   # update local for sanity check below
 
+            # --- Last-visit analysis (before any filtering) ---
+            final_pri  = row.get('PRIMARY DX', '').strip()
+            lv_raw     = row.get('LAST SEEN DATE', '').strip()
+            lv_date    = _to_date(lv_raw) if lv_raw else None
+            in_range   = isinstance(lv_date, date) and _ANALYSIS_START <= lv_date <= _ANALYSIS_END
+            bucket_pfx = 'in' if in_range else 'out'
+            if not final_pri:
+                lv[f'{bucket_pfx}_no_dx'] += 1
+            elif final_pri in _PRIMARY_DX_DISALLOWED:
+                lv[f'{bucket_pfx}_disallowed'] += 1
+            else:
+                lv[f'{bucket_pfx}_valid'] += 1
+
             # --- Filter: skip patients with no PRIMARY DX or a disallowed one ---
-            final_pri = row.get('PRIMARY DX', '').strip()
             if not final_pri or final_pri in _PRIMARY_DX_DISALLOWED:
-                no_primary_dx_skipped += 1
                 continue
 
             cells = []
@@ -1496,12 +1641,25 @@ def main():
     wb.save(str(xlsx_path))
     csv_path.unlink()
 
+    in_total  = lv['in_valid']  + lv['in_disallowed']  + lv['in_no_dx']
+    out_total = lv['out_valid'] + lv['out_disallowed'] + lv['out_no_dx']
+    total     = in_total + out_total
+
     print(f"  NEXT APPT filled:    {appt_written:,}")
     print(f"  MEDICATIONS filled:  {meds_written:,}")
     print(f"  Comorbidities filled:{comorb_written:,}")
-    print(f"  Skipped (no PRIMARY DX): {no_primary_dx_skipped:,}")
-
-    print("  SANITY OK — disallowed PRIMARY DX patients filtered out.")
+    print(f"\n--- Last-Visit Analysis (01/01/2025 – {_ANALYSIS_END.strftime('%m/%d/%Y')}) ---")
+    print(f"  Total patients (with primary insurance): {total:,}")
+    print(f"  Seen in range  : {in_total:,}")
+    print(f"    + Valid PRIMARY DX   : {lv['in_valid']:,}")
+    print(f"    + Disallowed PRIMARY : {lv['in_disallowed']:,}")
+    print(f"    + No PRIMARY DX      : {lv['in_no_dx']:,}")
+    print(f"  NOT seen in range : {out_total:,}")
+    print(f"    + Valid PRIMARY DX   : {lv['out_valid']:,}")
+    print(f"    + Disallowed PRIMARY : {lv['out_disallowed']:,}")
+    print(f"    + No PRIMARY DX      : {lv['out_no_dx']:,}")
+    print(f"  Written to Excel (valid DX only): {lv['in_valid']:,}")
+    print("  SANITY OK — disallowed PRIMARY DX patients excluded from output.")
 
     print(f"\nFinal output: {xlsx_path}")
 
