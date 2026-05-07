@@ -10,6 +10,7 @@ import sys
 import os
 import csv
 import glob
+import json
 from datetime import datetime, timedelta
 
 import pandas as pd
@@ -54,6 +55,55 @@ CLINIC_PRIMARY_DX = [
     ("L50.1",           "Chronic Idiopathic Urticaria"),
 ]
 
+# Canonical ICD code per allergy comorbidity column.
+# Used as PRIMARY ICD when a description-based match fires but no raw patient ICD is available.
+CLINIC_PRIMARY_DX_CANONICAL = {
+    "ASTHMA":                       "J45",
+    "CHRONIC RHINITIS":             "J31.0",
+    "CHRONIC COUGH":                "R05.3",
+    "ATOPIC DERMATITIS":            "L20",
+    "SYSTEMIC MASTOCYTOSIS":        "D47.02",
+    "COMPLEMENT DEFICIENCY":        "D84.1",
+    "FOOD ALLERGIES":               "Z91.010",
+    "CHRONIC IDIOPATHIC URTICARIA": "L50.1",
+}
+
+# Conservative, ICD-10-description-precise keywords for allergy comorbidity fallback.
+# Only used when no direct ICD prefix match is found in comorbidity_icd_map.
+# Keywords are matched against the ICD description text (lowercased, exact phrase).
+ACNY_DESCRIPTION_KEYWORDS = {
+    "ASTHMA": [
+        "asthma", "bronchial asthma", "allergic asthma",
+        "exercise induced asthma", "cough variant asthma", "asthmatic bronchitis",
+    ],
+    "CHRONIC RHINITIS": [
+        "chronic rhinitis", "chronic atrophic rhinitis",
+        "chronic hypertrophic rhinitis", "vasomotor rhinitis",
+    ],
+    "CHRONIC COUGH": [
+        "chronic cough",
+    ],
+    "ATOPIC DERMATITIS": [
+        "atopic dermatitis", "atopic neurodermatitis",
+        "infantile eczema", "intrinsic (allergic) eczema",
+    ],
+    "SYSTEMIC MASTOCYTOSIS": [
+        "systemic mastocytosis", "aggressive systemic mastocytosis",
+        "indolent systemic mastocytosis",
+    ],
+    "COMPLEMENT DEFICIENCY": [
+        "complement deficiency", "deficiency of complement",
+        "hereditary angioedema with c1-inhibitor deficiency",
+    ],
+    "FOOD ALLERGIES": [
+        "allergy to peanuts", "allergy to tree nuts",
+        "allergy to other foods", "food allergy", "food hypersensitivity",
+    ],
+    "CHRONIC IDIOPATHIC URTICARIA": [
+        "chronic idiopathic urticaria",
+    ],
+}
+
 # Map CSV cause names → template comorbidity column names
 CAUSE_TO_COLUMN = {
     "Asthma":                       "ASTHMA",
@@ -81,48 +131,19 @@ CAUSE_TO_COLUMN = {
 }
 
 COMORBIDITY_COLUMNS = [
+    # Allergy-specific (clinic focus) — checked first for PRIMARY DX left-to-right
+    "ASTHMA",
+    "CHRONIC RHINITIS", "CHRONIC COUGH", "ATOPIC DERMATITIS",
+    "SYSTEMIC MASTOCYTOSIS", "COMPLEMENT DEFICIENCY", "FOOD ALLERGIES",
+    "CHRONIC IDIOPATHIC URTICARIA",
+    # General comorbidities
     "CORONARY ARTERY DISEASE", "ARRHYTHMIA", "CONGESTIVE HEART FAILURE",
     "PERIPHERAL VASCULAR", "VALVULAR HEART", "CERBOVASCULAR ACCIDENT",
     "HYPERLIPIDEMIA", "ANGINA PECTORIS", "HYPOTENSION", "HYPERTENSION",
     "OBESITY", "DIABETES", "CHRONIC KIDNEY DISEASE", "COPD",
-    "RESPIRATORY FAILURE", "ASTHMA", "SLEEP APNEA", "DYSPNEA", "EMPHYSEMA",
+    "RESPIRATORY FAILURE", "SLEEP APNEA", "DYSPNEA", "EMPHYSEMA",
     "BRONCHIECTASIS", "HYPOXEMIA",
 ]
-
-# Clinic-specific comorbidity columns derived from PRIMARY DX descriptions
-ACNY_COMORBIDITY_COLUMNS = [
-    "ALLERGIC RHINITIS / SINUSITIS",
-    "SKIN ALLERGY",
-    "ALLERGIC CONJUNCTIVITIS",
-    "IMMUNODEFICIENCY",
-    "FOOD ALLERGY / ANAPHYLAXIS",
-]
-
-# Lowercase keyword fragments → new comorbidity column
-ACNY_DX_KEYWORDS = {
-    "ALLERGIC RHINITIS / SINUSITIS": [
-        "allergic rhinitis", "seasonal allergic rhinitis", "vasomotor rhinitis",
-        "chronic rhinitis", "sneezing", "postnasal drip", "nasal congestion",
-        "sinusitis", "disorders of nose",
-    ],
-    "SKIN ALLERGY": [
-        "atopic dermatitis", "eczema", "eczematous", "dermatitis", "urticaria",
-        "pruritus", "rash", "skin eruption", "intrinsic (allergic)", "xerosis",
-    ],
-    "ALLERGIC CONJUNCTIVITIS": [
-        "conjunctivitis", "dry eye",
-    ],
-    "IMMUNODEFICIENCY": [
-        "immunodeficiency", "immunoglobulin", "immunoglob", "mast cell",
-        "complement", "immune mechanism", "antibody defic", "hypogammaglobulin",
-        "common variable", "selective deficiency of immunoglobulin",
-    ],
-    "FOOD ALLERGY / ANAPHYLAXIS": [
-        "food allergy", "allergy to peanut", "anaphylactic", "bee allergy",
-        "angioedema", "enterocolitis", "celiac", "malabsorption due to intolerance",
-        "lactose", "lactase deficiency",
-    ],
-}
 
 DATE_COLUMNS = ["DATE OF BIRTH", "LAST SEEN DATE", "NEXT APPT"]
 
@@ -136,17 +157,21 @@ TEMPLATE_COLUMNS = [
     "SECONDARY INSURANCE", "SECONDARY ID", "SECONDARY GROUP",
     "TERITARY INSURANCE", "TERITARY ID", "TERITARY GROUP",
     "INSURANCE TYPE", "CO-PAY",
+    # Allergy-specific comorbidities first (clinic focus)
+    "ASTHMA",
+    "CHRONIC RHINITIS", "CHRONIC COUGH", "ATOPIC DERMATITIS",
+    "SYSTEMIC MASTOCYTOSIS", "COMPLEMENT DEFICIENCY", "FOOD ALLERGIES",
+    "CHRONIC IDIOPATHIC URTICARIA",
+    # General comorbidities
     "CORONARY ARTERY DISEASE", "ARRHYTHMIA", "CONGESTIVE HEART FAILURE",
     "PERIPHERAL VASCULAR", "VALVULAR HEART", "CERBOVASCULAR ACCIDENT",
     "HYPERLIPIDEMIA", "ANGINA PECTORIS", "HYPOTENSION", "HYPERTENSION",
     "OBESITY", "DIABETES", "CHRONIC KIDNEY DISEASE", "COPD",
-    "RESPIRATORY FAILURE", "ASTHMA", "SLEEP APNEA", "DYSPNEA", "EMPHYSEMA",
+    "RESPIRATORY FAILURE", "SLEEP APNEA", "DYSPNEA", "EMPHYSEMA",
     "BRONCHIECTASIS", "HYPOXEMIA",
     "PRIMARY DX", "SECONDARY DX", "PRIMARY ICD", "SECONDARY ICD",
     "LAST SEEN DATE", "NEXT APPT", "PROVIDER DATA", "PROVIDER NAME",
     "CLINIC FACILITY", "PRIMARY CARE PROVIDER", "MEDICATIONS", "ENCOUNTER NOTES",
-    "ALLERGIC RHINITIS / SINUSITIS", "SKIN ALLERGY", "ALLERGIC CONJUNCTIVITIS",
-    "IMMUNODEFICIENCY", "FOOD ALLERGY / ANAPHYLAXIS",
 ]
 
 
@@ -182,6 +207,19 @@ def is_clinic_primary_dx(icd_code):
     return any(matches_icd_pattern(icd_code, pat) for pat, _ in CLINIC_PRIMARY_DX)
 
 
+def _icd_matches_prefix(patient_code, prefix):
+    """
+    Normalizes both sides (uppercase, strip dots) then checks bidirectionally.
+    Bidirectional covers:
+      - Patient has more specific code: "I10.0" (norm "I100") vs prefix "I100" → startswith ✓
+      - Patient has less specific code: "I10"   (norm "I10")  vs prefix "I100" → reverse ✓
+      - Allergy short prefixes:         "J45.20" (norm "J4520") vs prefix "J45" → startswith ✓
+    """
+    norm_code   = patient_code.upper().replace(".", "")
+    norm_prefix = prefix.upper().replace(".", "")
+    return norm_code.startswith(norm_prefix) or norm_prefix.startswith(norm_code)
+
+
 def classify_icd(icd_set, comorbidity_icd_map):
     """
     Returns:
@@ -193,7 +231,7 @@ def classify_icd(icd_set, comorbidity_icd_map):
 
     for col, prefixes in comorbidity_icd_map.items():
         for code in sorted(icd_set):           # sorted for determinism
-            if any(code.upper().startswith(p.upper()) for p in prefixes):
+            if any(_icd_matches_prefix(code, p) for p in prefixes):
                 comorbidities[col] = "YES"
                 comorbidity_to_raw_icd[col] = code
                 break
@@ -341,11 +379,38 @@ def parse_icd_descriptions(profitability_path, diagnosis_path):
     return icd_desc
 
 
-def parse_prescription_csv(fpath):
+def load_allergy_icd_map(template_dir):
     """
-    Loads api_prescriptioncauselist CSV.
+    Loads acny_allergy_icd_map.json — the one-time pre-built mapping of allergy
+    ICD codes actually present in ACNY source data.
+    Returns:
+      icd_prefixes  : dict  column → [icd_prefix_strings]
+      desc_keywords : dict  column → [lowercase description keyword phrases]
+      canonical_icd : dict  column → canonical_icd_string
+    """
+    json_path = os.path.join(template_dir, "acny_allergy_icd_map.json")
+    with open(json_path, encoding="utf-8") as f:
+        data = json.load(f)
+
+    icd_prefixes  = {}
+    desc_keywords = {}
+    canonical_icd = {}
+
+    for col, entry in data.items():
+        if col.startswith("_"):
+            continue
+        icd_prefixes[col]  = entry.get("icd_prefixes", [])
+        desc_keywords[col] = entry.get("description_keywords", [])
+        canonical_icd[col] = entry.get("canonical_icd", "")
+
+    return icd_prefixes, desc_keywords, canonical_icd
+
+
+def parse_prescription_csv(fpath, allergy_icd_prefixes):
+    """
+    Loads api_prescriptioncauselist CSV for general comorbidities.
+    Allergy-specific ICD prefixes come from acny_allergy_icd_map.json (pre-built from raw data).
     Returns dict: template_column_name → [icd_prefix_patterns]
-    ASTHMA is overridden to J45 (all asthma codes).
     """
     comorbidity_icd_map = {}
     with open(fpath, newline="", encoding="utf-8") as f:
@@ -360,8 +425,11 @@ def parse_prescription_csv(fpath):
             if col:
                 comorbidity_icd_map.setdefault(col, []).append(icd)
 
-    # Override ASTHMA: match all J45.xx codes
-    comorbidity_icd_map["ASTHMA"] = ["J45"]
+    # Override/add allergy-specific ICD prefixes from JSON (data-driven, not hardcoded)
+    for col, prefixes in allergy_icd_prefixes.items():
+        if prefixes:
+            comorbidity_icd_map[col] = prefixes
+
     return comorbidity_icd_map
 
 
@@ -669,7 +737,8 @@ def parse_analysis_of_visits(fpath):
 
 def build_consolidated(all_records, phone_map, visit_map, carrier_map, pcp_map,
                        comorbidity_icd_map, icd_desc, future_appt_map=None,
-                       registry_map=None):
+                       registry_map=None, allergy_desc_keywords=None,
+                       allergy_canonical_icd=None):
     rows = []
     for r in all_records:
         last, first, middle, full_name, emr_name = parse_name(r["_raw_patient"])
@@ -704,15 +773,18 @@ def build_consolidated(all_records, phone_map, visit_map, carrier_map, pcp_map,
             comorbidities          = {col: "" for col in COMORBIDITY_COLUMNS}
             comorbidity_to_raw_icd = {}
 
-        # YES comorbidities left-to-right
+        # YES comorbidities in COMORBIDITY_COLUMNS order (allergy columns are first,
+        # so left-to-right naturally prioritises allergy diagnoses for this clinic)
         yes_conditions = [col for col in COMORBIDITY_COLUMNS if comorbidities.get(col) == "YES"]
 
         # PRIMARY DX / ICD — three-tier:
-        #   1. First YES comorbidity whose raw ICD matches CLINIC_PRIMARY_DX
-        #   2. First YES comorbidity from api_prescription
-        #   3. First raw ICD code with a known description from Profitability/DiagnosisCode
+        #   Tier 1: First YES comorbidity whose triggering raw ICD matches CLINIC_PRIMARY_DX
+        #   Tier 2: First YES comorbidity left-to-right (allergy columns lead the list)
+        #   Tier 3: ICD description keyword match against ACNY_DESCRIPTION_KEYWORDS
+        #           (only fires when no ICD code mapped to any comorbidity column)
         primary_dx = primary_icd = ""
 
+        # Tier 1 — prefer a YES whose raw ICD is an allergy/asthma code
         for col in yes_conditions:
             raw_icd = comorbidity_to_raw_icd.get(col, "")
             if raw_icd and is_clinic_primary_dx(raw_icd):
@@ -720,18 +792,26 @@ def build_consolidated(all_records, phone_map, visit_map, carrier_map, pcp_map,
                 primary_icd = raw_icd
                 break
 
+        _canonical = allergy_canonical_icd or CLINIC_PRIMARY_DX_CANONICAL
+        _desc_kws  = allergy_desc_keywords  or ACNY_DESCRIPTION_KEYWORDS
+
+        # Tier 2 — first YES in column order (ASTHMA and allergy columns are leftmost)
         if not primary_dx and yes_conditions:
             primary_dx  = yes_conditions[0]
             primary_icd = comorbidity_to_raw_icd.get(primary_dx, "")
+            if not primary_icd:
+                primary_icd = _canonical.get(primary_dx, "")
 
+        # Tier 3 — description keyword fallback when no comorbidity was flagged via ICD matching
         if not primary_dx and icd_set:
             for code in sorted(icd_set):
                 desc = icd_desc.get(code.upper(), "")
                 if not desc:
                     continue
                 desc_lower = desc.lower()
-                for col in ACNY_COMORBIDITY_COLUMNS:
-                    if any(kw in desc_lower for kw in ACNY_DX_KEYWORDS[col]):
+                for col in COMORBIDITY_COLUMNS:
+                    kws = _desc_kws.get(col)
+                    if kws and any(kw in desc_lower for kw in kws):
                         primary_dx  = col
                         primary_icd = code
                         break
@@ -745,11 +825,11 @@ def build_consolidated(all_records, phone_map, visit_map, carrier_map, pcp_map,
                 continue
             secondary_dx  = col
             secondary_icd = comorbidity_to_raw_icd.get(col, "")
+            if not secondary_icd:
+                secondary_icd = _canonical.get(secondary_dx, "")
             break
 
         comorbidity_vals = comorbidities
-
-        # Raw ICD as temp column (comma-separated sorted)
         raw_icd_str = ", ".join(sorted(icd_set))
 
         ins_name = visit.get("insurance", "")
@@ -768,7 +848,8 @@ def build_consolidated(all_records, phone_map, visit_map, carrier_map, pcp_map,
         row["LAST NAME"]           = last
         row["PATIENT FULL NAME"]   = full_name
         row["DATE OF BIRTH"]       = r["birthdate"]   # datetime object
-        row["GENDER"]              = r["sex"]
+        _sex = r["sex"].strip().upper()
+        row["GENDER"]              = "Male" if _sex in ("M", "MALE") else "Female" if _sex in ("F", "FEMALE") else r["sex"]
         row["STREET ADDRESS"]      = street
         row["CITY"]                = r["city"]
         row["STATE"]               = r["state"]
@@ -800,12 +881,12 @@ def build_consolidated(all_records, phone_map, visit_map, carrier_map, pcp_map,
         row["NEXT APPT"]           = next_appt
         row["PROVIDER DATA"]       = raw_provider
         row["PROVIDER NAME"]       = parse_provider_name(raw_provider)
-        row["CLINIC FACILITY"]     = CLINIC_FACILITY
+        row["CLINIC FACILITY"]       = CLINIC_FACILITY
         row["PRIMARY CARE PROVIDER"] = pcp_map.get(r["chart_no"], "")
 
-        # Clinic-specific comorbidities: YES if primary or secondary DX is that column
-        for col in ACNY_COMORBIDITY_COLUMNS:
-            row[col] = "YES" if primary_dx == col or secondary_dx == col else "NO"
+        # Skip patients for whom no primary diagnosis could be determined
+        if not primary_dx:
+            continue
 
         rows.append(row)
 
@@ -834,15 +915,20 @@ def main():
     timestamp   = datetime.now().strftime("%Y%m%d_%H%M%S")
     output_path = os.path.join(output_dir, f"ACNY_consolidated_{timestamp}.xlsx")
 
+    # Load allergy ICD map from pre-built JSON (one-time scan of raw diagnosis files)
+    print(f"\nLoading allergy ICD map from acny_allergy_icd_map.json ...")
+    allergy_icd_prefixes, allergy_desc_keywords, allergy_canonical_icd = load_allergy_icd_map(template_dir)
+    print(f"  Allergy ICD map loaded for {len(allergy_icd_prefixes)} allergy columns.")
+
     # Locate prescription CSV
     csv_files = glob.glob(os.path.join(template_dir, "api_prescription*.csv"))
     if not csv_files:
-        print("WARNING: api_prescription*.csv not found in template/ — comorbidities will be blank.")
-        comorbidity_icd_map = {"ASTHMA": ["J45"]}
+        print("WARNING: api_prescription*.csv not found in template/ — only allergy ICD patterns will be active.")
+        comorbidity_icd_map = {col: prefixes for col, prefixes in allergy_icd_prefixes.items() if prefixes}
     else:
         csv_path = csv_files[0]
         print(f"Reading {csv_path} ...")
-        comorbidity_icd_map = parse_prescription_csv(csv_path)
+        comorbidity_icd_map = parse_prescription_csv(csv_path, allergy_icd_prefixes)
         print(f"  Comorbidity ICD map loaded for {len(comorbidity_icd_map)} conditions.")
 
     # Parse PatientDemo
@@ -911,7 +997,9 @@ def main():
     # Build consolidated output
     print("\nBuilding consolidated output ...")
     df = build_consolidated(all_records, phone_map, visit_map, carrier_map, pcp_map,
-                            comorbidity_icd_map, icd_desc, future_appt_map, registry_map)
+                            comorbidity_icd_map, icd_desc, future_appt_map, registry_map,
+                            allergy_desc_keywords=allergy_desc_keywords,
+                            allergy_canonical_icd=allergy_canonical_icd)
 
     before = len(df)
     df.drop_duplicates(inplace=True)
