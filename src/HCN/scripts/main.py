@@ -1604,9 +1604,13 @@ def main():
                     ''
                 )
                 if inferred and inferred not in _PRIMARY_DX_DISALLOWED:
+                    # Ensure comorbidity flags are initialised if ICD pass found nothing
+                    if not icd_map or not any(row.get(c) for c in _COMORBIDITY_COLUMNS):
+                        row.update({c: 'NO' for c in _COMORBIDITY_COLUMNS})
+                    row[inferred]      = 'YES'
                     row['PRIMARY DX']  = inferred
                     row['PRIMARY ICD'] = comorb_to_icd.get(inferred, '')
-                    pri = inferred   # update local for sanity check below
+                    pri = inferred
 
             # --- Last-visit analysis (before any filtering) ---
             final_pri  = row.get('PRIMARY DX', '').strip()
