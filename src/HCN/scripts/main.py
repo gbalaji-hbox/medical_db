@@ -1669,6 +1669,10 @@ def main():
                 row['PRIMARY ICD']   = ''
                 row['SECONDARY ICD'] = ''
 
+            # Drop patients whose last visit is before 2025; keep if empty
+            if isinstance(lv_date, date) and lv_date < date(2025, 1, 1):
+                continue
+
             cells = []
             for c in TEMPLATE_COLS:
                 val = row.get(c, '')

@@ -655,7 +655,7 @@ def parse_qualified_registry(fpath):
 
 def parse_future_appointments(fpath):
     """
-    Reads AppointmentConfirmationDetail _Future.xlsx (119 sheets, one per day).
+    Reads AppointmentConfirmationDetail_Future.xlsx (119 sheets, one per day).
     Per sheet:
       row 3 (0-indexed): col[0] = "Appointment Date: MM/DD/YYYY"
       row 4            : column headers
@@ -985,7 +985,7 @@ def main():
         registry_map = None
 
     # Parse future appointments
-    future_appt_path = os.path.join(base, "AppointmentConfirmationDetail _Future.xlsx")
+    future_appt_path = os.path.join(base, "AppointmentConfirmationDetail_Future.xlsx")
     if os.path.exists(future_appt_path):
         print(f"\nReading {future_appt_path} ...")
         future_appt_map = parse_future_appointments(future_appt_path)
@@ -1010,6 +1010,15 @@ def main():
     df.drop_duplicates(inplace=True)
     after = len(df)
     print(f"  Removed {before - after} duplicates. {after} records remain.")
+
+    # Drop patients whose last visit is before 2025-01-01; keep rows with no last visit date
+    cutoff = datetime(2025, 1, 1)
+    mask = df["LAST SEEN DATE"].apply(
+        lambda v: (not isinstance(v, datetime)) or v >= cutoff
+    )
+    before_lv = len(df)
+    df = df[mask].reset_index(drop=True)
+    print(f"  Removed {before_lv - len(df)} rows with last visit before 2025. {len(df)} records remain.")
 
     after_filter = len(df)
     print(f"  Final record count: {after_filter}")
