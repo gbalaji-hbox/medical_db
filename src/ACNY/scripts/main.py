@@ -71,7 +71,7 @@ CLINIC_PRIMARY_DX_CANONICAL = {
 # Conservative, ICD-10-description-precise keywords for allergy comorbidity fallback.
 # Only used when no direct ICD prefix match is found in comorbidity_icd_map.
 # Keywords are matched against the ICD description text (lowercased, exact phrase).
-ACNY_DESCRIPTION_KEYWORDS = {
+CLINIC_DESCRIPTION_KEYWORDS = {
     "ASTHMA": [
         "asthma", "bronchial asthma", "allergic asthma",
         "exercise induced asthma", "cough variant asthma", "asthmatic bronchitis",
@@ -780,7 +780,7 @@ def build_consolidated(all_records, phone_map, visit_map, carrier_map, pcp_map,
         # PRIMARY DX / ICD — three-tier:
         #   Tier 1: First YES comorbidity whose triggering raw ICD matches CLINIC_PRIMARY_DX
         #   Tier 2: First YES comorbidity left-to-right (allergy columns lead the list)
-        #   Tier 3: ICD description keyword match against ACNY_DESCRIPTION_KEYWORDS
+        #   Tier 3: ICD description keyword match against CLINIC_DESCRIPTION_KEYWORDS
         #           (only fires when no ICD code mapped to any comorbidity column)
         primary_dx = primary_icd = ""
 
@@ -793,7 +793,7 @@ def build_consolidated(all_records, phone_map, visit_map, carrier_map, pcp_map,
                 break
 
         _canonical = allergy_canonical_icd or CLINIC_PRIMARY_DX_CANONICAL
-        _desc_kws  = allergy_desc_keywords  or ACNY_DESCRIPTION_KEYWORDS
+        _desc_kws  = allergy_desc_keywords  or CLINIC_DESCRIPTION_KEYWORDS
 
         # Tier 2 — first YES in column order (ASTHMA and allergy columns are leftmost)
         if not primary_dx and yes_conditions:
@@ -884,9 +884,13 @@ def build_consolidated(all_records, phone_map, visit_map, carrier_map, pcp_map,
         row["CLINIC FACILITY"]       = CLINIC_FACILITY
         row["PRIMARY CARE PROVIDER"] = pcp_map.get(r["chart_no"], "")
 
-        # Skip patients for whom no primary diagnosis could be determined
+        # Patients with no primary diagnosis: keep but blank DX/ICD and set comorbidities to NO
         if not primary_dx:
-            continue
+            row.update({col: "NO" for col in COMORBIDITY_COLUMNS})
+            row["PRIMARY DX"]    = ""
+            row["SECONDARY DX"]  = ""
+            row["PRIMARY ICD"]   = ""
+            row["SECONDARY ICD"] = ""
 
         rows.append(row)
 
@@ -912,8 +916,9 @@ def main():
     template_dir      = os.path.join(base, "template")
     output_dir    = os.path.join(base, "output")
     os.makedirs(output_dir, exist_ok=True)
+    module_name = os.path.basename(os.path.abspath(base))
     timestamp   = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_path = os.path.join(output_dir, f"ACNY_consolidated_{timestamp}.xlsx")
+    output_path = os.path.join(output_dir, f"{module_name}_consolidated_{timestamp}.xlsx")
 
     # Load allergy ICD map from pre-built JSON (one-time scan of raw diagnosis files)
     print(f"\nLoading allergy ICD map from acny_allergy_icd_map.json ...")
@@ -1006,15 +1011,8 @@ def main():
     after = len(df)
     print(f"  Removed {before - after} duplicates. {after} records remain.")
 
-    # Filter: remove only patients with no ICD codes at all in visit data
-    before_filter = len(df)
-    has_icd = df["EMR ID"].map(
-        lambda chart: bool(visit_map.get(chart, {}).get("icd_codes"))
-                      or bool((registry_map or {}).get(chart, {}).get("icd_codes"))
-    )
-    df = df[has_icd].reset_index(drop=True)
     after_filter = len(df)
-    print(f"  Removed {before_filter - after_filter} rows with no ICD data. Final record count: {after_filter}")
+    print(f"  Final record count: {after_filter}")
 
     has_primary_icd = (df["PRIMARY ICD"] != "").sum()
     has_secondary   = (df["SECONDARY ICD"] != "").sum()

@@ -1,0 +1,105 @@
+{
+  "_note": "Generated once from DiagnosisCodeProductionDetail.xlsx and Profitability.xlsx. Contains ONLY the allergy/asthma ICD codes present in ACNY clinic data that are supported for CCM care. Do not add codes not found in the source files.",
+  "ASTHMA": {
+    "canonical_icd": "J45",
+    "icd_prefixes": ["J45"],
+    "codes": {
+      "J45.20":  "Mild Intermittent Asthma, Uncomplicated",
+      "J45.21":  "Mild Intermittent Asthma With (Acute) Exacerbation",
+      "J45.30":  "Mild Persistent Asthma, Uncomplicated",
+      "J45.31":  "Mild Persistent Asthma With (Acute) Exacerbation",
+      "J45.40":  "Moderate Persistent Asthma, Uncomplicated",
+      "J45.41":  "Moderate Persistent Asthma With (Acute) Exacerbation",
+      "J45.50":  "Severe Persistent Asthma, Uncomplicated",
+      "J45.51":  "Severe Persistent Asthma With (Acute) Exacerbation",
+      "J45.52":  "Severe Persistent Asthma With Status Asthmaticus",
+      "J45.901": "Unspecified Asthma With (Acute) Exacerbation",
+      "J45.909": "Unspecified Asthma, Uncomplicated",
+      "J45.990": "Exercise Induced Bronchospasm",
+      "J45.991": "Cough Variant Asthma",
+      "J45.998": "Other Asthma"
+    },
+    "description_keywords": [
+      "asthma",
+      "exercise induced bronchospasm"
+    ]
+  },
+  "CHRONIC RHINITIS": {
+    "canonical_icd": "J31.0",
+    "icd_prefixes": ["J31.0"],
+    "codes": {
+      "J31.0": "Chronic Rhinitis"
+    },
+    "description_keywords": [
+      "chronic rhinitis"
+    ]
+  },
+  "CHRONIC COUGH": {
+    "canonical_icd": "R05.3",
+    "icd_prefixes": ["R05.3"],
+    "codes": {
+      "R05.3": "Chronic Cough"
+    },
+    "description_keywords": [
+      "chronic cough"
+    ]
+  },
+  "ATOPIC DERMATITIS": {
+    "canonical_icd": "L20",
+    "icd_prefixes": ["L20"],
+    "codes": {
+      "L20.84": "Intrinsic (Allergic) Eczema",
+      "L20.89": "Other Atopic Dermatitis",
+      "L20.9":  "Atopic Dermatitis, Unspecified"
+    },
+    "description_keywords": [
+      "atopic dermatitis",
+      "intrinsic (allergic) eczema"
+    ]
+  },
+  "SYSTEMIC MASTOCYTOSIS": {
+    "canonical_icd": "D47.02",
+    "icd_prefixes": ["D47.02"],
+    "codes": {},
+    "_note": "D47.02 not found in ACNY source data as of last scan. D47.01 (Cutaneous Mastocytosis) is present but is NOT systemic and is NOT included.",
+    "description_keywords": [
+      "systemic mastocytosis"
+    ]
+  },
+  "COMPLEMENT DEFICIENCY": {
+    "canonical_icd": "D84.1",
+    "icd_prefixes": ["D84.1"],
+    "codes": {
+      "D84.1": "Defects In The Complement System"
+    },
+    "description_keywords": [
+      "defects in the complement system"
+    ]
+  },
+  "FOOD ALLERGIES": {
+    "canonical_icd": "Z91.010",
+    "icd_prefixes": ["Z91.010", "Z91.013", "Z91.018"],
+    "codes": {
+      "Z91.010": "Allergy To Peanuts",
+      "Z91.013": "Allergy To Seafood",
+      "Z91.018": "Allergy To Other Foods"
+    },
+    "_note": "Z91.011 (milk), Z91.012 (eggs), Z91.014 (mammalian meats) are present in data but excluded per CCM program scope — only Z91.010, Z91.013, Z91.018 are supported.",
+    "description_keywords": [
+      "allergy to peanuts",
+      "allergy to seafood",
+      "allergy to other foods"
+    ]
+  },
+  "CHRONIC IDIOPATHIC URTICARIA": {
+    "canonical_icd": "L50.1",
+    "icd_prefixes": ["L50.1"],
+    "codes": {
+      "L50.1": "Idiopathic Urticaria"
+    },
+    "_note": "Description in source data is 'Idiopathic Urticaria' (not 'Chronic Idiopathic Urticaria'). L50.1 prefix match covers it.",
+    "description_keywords": [
+      "idiopathic urticaria"
+    ]
+  }
+}

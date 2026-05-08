@@ -81,6 +81,45 @@ EMPTY_COMORBIDITIES = {c: "" for c in TEMPLATE_COLS[34:55]}  # cols 35-55
 
 _DATE_COLS = {"DATE OF BIRTH", "LAST SEEN DATE", "NEXT APPT"}
 
+_LANGUAGE_MAP = {
+    "SPA": "Spanish", "ENG": "English", "FRE": "French", "POR": "Portuguese",
+    "GER": "German", "ITA": "Italian", "CHI": "Chinese", "MAN": "Mandarin",
+    "CAN": "Cantonese", "KOR": "Korean", "JPN": "Japanese", "VIE": "Vietnamese",
+    "ARA": "Arabic", "HIN": "Hindi", "RUS": "Russian", "POL": "Polish",
+    "TAG": "Tagalog", "FIL": "Filipino", "HAI": "Haitian Creole",
+    "AMH": "Amharic", "SOM": "Somali", "URD": "Urdu", "PUN": "Punjabi",
+    "GUJ": "Gujarati", "BEN": "Bengali", "FAR": "Farsi", "PER": "Persian",
+    "OTH": "Other", "UNK": "Unknown", "NON": "None",
+}
+
+_RACE_MAP = {
+    "N1": "American Indian",
+    "N2": "Asian",
+    "N3": "Black",
+    "A":  "Asian",
+    "B":  "Black",
+    "C":  "Caucasian",
+    "P":  "Pacific Islander",
+    "H":  "Hispanic",
+    "W":  "White",
+    "O":  "Other",
+    "U":  "Unknown",
+}
+
+
+def _expand_language(code: str) -> str:
+    if not code:
+        return code
+    return _LANGUAGE_MAP.get(code.upper(), code)
+
+
+def _expand_race(raw: str) -> str:
+    """Take the first token if comma-separated, then expand code to full name."""
+    if not raw:
+        return raw
+    first = raw.split(",")[0].strip()
+    return _RACE_MAP.get(first.upper(), first)
+
 
 def _to_date(s: str):
     if not s:
@@ -527,8 +566,8 @@ def parse_page(text: str) -> dict | None:
         "MOBILE PHONE":         fields.get("mobile_phone", ""),
         "WORK PHONE":           fields.get("work_phone", ""),
         "EMAIL ADDRESS":        fields.get("email", ""),
-        "LANGUAGE":             fields.get("lang", ""),
-        "RACE":                 fields.get("race", ""),
+        "LANGUAGE":             _expand_language(fields.get("lang", "")),
+        "RACE":                 _expand_race(fields.get("race", "")),
         "EMERGENCY CONTACT NAME":        "",
         "EMERGENCY RELATIONSHIP":        "",
         "EMERGENCY CONTACT HOME PHONE":  "",
@@ -1471,9 +1510,6 @@ def main():
                 eid = rec["EMR ID"]
                 if eid in seen:
                     skipped += 1; continue
-                if not rec["PRIMARY INSURANCE"]:
-                    skipped += 1
-                    continue
                 seen.add(eid)
                 writer.writerow(rec)
                 written += 1
@@ -1625,9 +1661,13 @@ def main():
             else:
                 lv[f'{bucket_pfx}_valid'] += 1
 
-            # --- Filter: skip patients with no PRIMARY DX or a disallowed one ---
+            # Patients with no valid PRIMARY DX: keep the record but blank out DX/ICD and set all comorbidities to NO
             if not final_pri or final_pri in _PRIMARY_DX_DISALLOWED:
-                continue
+                row.update({c: 'NO' for c in _COMORBIDITY_COLUMNS})
+                row['PRIMARY DX']    = ''
+                row['SECONDARY DX']  = ''
+                row['PRIMARY ICD']   = ''
+                row['SECONDARY ICD'] = ''
 
             cells = []
             for c in TEMPLATE_COLS:
@@ -1653,7 +1693,7 @@ def main():
     print(f"  MEDICATIONS filled:  {meds_written:,}")
     print(f"  Comorbidities filled:{comorb_written:,}")
     print(f"\n--- Last-Visit Analysis (01/01/2025 – {_ANALYSIS_END.strftime('%m/%d/%Y')}) ---")
-    print(f"  Total patients (with primary insurance): {total:,}")
+    print(f"  Total patients: {total:,}")
     print(f"  Seen in range  : {in_total:,}")
     print(f"    + Valid PRIMARY DX   : {lv['in_valid']:,}")
     print(f"    + Disallowed PRIMARY : {lv['in_disallowed']:,}")

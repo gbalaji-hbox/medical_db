@@ -59,6 +59,9 @@ src/ACNY/*.xlsx
 src/ACNY/*.xls
 src/ACNY/*.csv
 src/ACNY/*.rdp
+src/CFAA/*.xlsx
+src/CFAA/*.xls
+src/CFAA/*.csv
 
 # HCN raw PHI input files (PDFs) and outputs
 src/HCN/*.PDF
