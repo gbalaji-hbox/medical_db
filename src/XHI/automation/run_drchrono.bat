@@ -5,19 +5,25 @@ echo =====================================
 
 :: ── CONFIGURATION ─────────────────────────────────────────────────────────────
 set drchrono_username=Hbox01
-set drchrono_password=HB0x@XHIJune2026!
+set drchrono_password=Springxhi2026@
 set API_BASE_URL=https://qam.hbox.ai/emr
-set API_KEY=uCmPDOa2GpUa2oY1lxzJS2gEdtuIOm_RMYcIPd11Vwc
+set API_KEY=7C8SBVLtOuADV5HrrrbsO2KXjeRABkKcUoNqA2vHMzE
 :: ─────────────────────────────────────────────────────────────────────────────
 
-:: ── Check Node.js — install if missing ───────────────────────────────────────
+:: ── Check Node.js — install if missing (portable zip, no MSI) ────────────────
+set NODE_DIR=%LOCALAPPDATA%\node-v20.20.2-win-x64
 where node >nul 2>&1
 if errorlevel 1 (
-  echo Node.js not found. Installing...
-  powershell -Command "Invoke-WebRequest https://nodejs.org/dist/latest-v20.x/node-v20.20.2-x64.msi -OutFile '%TEMP%\node.msi'"
-  start /wait msiexec /i "%TEMP%\node.msi" /qn /norestart
-  del "%TEMP%\node.msi"
-  echo Node.js installed.
+  if exist "%NODE_DIR%\node.exe" (
+    echo Node.js portable install found.
+  ) else (
+    echo Node.js not found. Downloading portable zip...
+    powershell -Command "Invoke-WebRequest https://nodejs.org/dist/v20.20.2/node-v20.20.2-win-x64.zip -OutFile '%TEMP%\node.zip'"
+    powershell -Command "Expand-Archive -Path '%TEMP%\node.zip' -DestinationPath '%LOCALAPPDATA%' -Force"
+    del "%TEMP%\node.zip"
+    echo Node.js extracted to %NODE_DIR%.
+  )
+  set "PATH=%NODE_DIR%;%PATH%"
 )
 
 :: ── Prepare dated output folder on Desktop ────────────────────────────────────
